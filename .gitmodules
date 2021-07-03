@@ -1,0 +1,6 @@
+[submodule "third-party/pcapplusplus"]
+	path = third-party/pcapplusplus
+	url = https://github.com/seladb/PcapPlusPlus.git
+[submodule "third-party/libpcap"]
+	path = third-party/libpcap
+	url = https://github.com/the-tcpdump-group/libpcap.git
