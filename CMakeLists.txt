@@ -2,10 +2,17 @@ cmake_minimum_required(VERSION 3.0)
 project(domos_traceroute)
 
 set(CMAKE_CXX_STANDARD 11)
+# Need this for multithreading
+set(CMAKE_CXX_FLAGS -std=c++11)
+
 set(
         SOURCES
-)
+        src/Probe.cpp
+        src/Utilities.cpp
+        src/Traceroute.cpp
+        src/Capture.cpp include/Capture.h)
 include(ExternalProject)
+# Build the libpcap library
 ExternalProject_Add(
         libpcap
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/libpcap
@@ -15,6 +22,7 @@ ExternalProject_Add(
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
 )
+# Build the pcapplusplus library
 ExternalProject_Add(
         pcapplusplus
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus
@@ -25,17 +33,26 @@ ExternalProject_Add(
         BUILD_IN_SOURCE 1
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-add_executable(domos_traceroute main.cpp ${SOURCES})
-
+add_executable(domos_traceroute src/main.cpp ${SOURCES})
+# We need this
+find_package(Threads REQUIRED)
+# Add dependencies, so that cmake knows what to build in what order
 add_dependencies(pcapplusplus libpcap)
 add_dependencies(domos_traceroute pcapplusplus)
-target_include_directories(domos_traceroute PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/header)
-target_link_libraries(
+
+# Add the pcapplusplus header
+target_include_directories(
         domos_traceroute
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/header
+)
+
+# Link the built libraries, so that we can use them in our code
+target_link_libraries(
+        domos_traceroute PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPcap++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPacket++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libCommon++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/libpcap/libpcap.a
+        Threads::Threads
 )
