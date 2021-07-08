@@ -20,7 +20,7 @@ private:
     pcpp::Packet *packet = nullptr;
     pcpp::PcapLiveDevice *device = nullptr;
 public:
-    Probe(const std::string &dst_ip, uint16_t srcPort, uint16_t dstPort, uint8_t ttl, pcpp::MacAddress gatewayMac,
+    Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8_t ttl, pcpp::MacAddress gatewayMac,
           pcpp::PcapLiveDevice *device, ProbeType probe_type);
     ~Probe();
     void send();

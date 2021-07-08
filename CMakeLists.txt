@@ -10,7 +10,8 @@ set(
         src/Probe.cpp
         src/Utilities.cpp
         src/Traceroute.cpp
-        src/Capture.cpp include/Capture.h)
+        src/Capture.cpp include/Capture.h
+        src/ProbeRegister.cpp include/ProbeRegister.h)
 include(ExternalProject)
 # Build the libpcap library
 ExternalProject_Add(
