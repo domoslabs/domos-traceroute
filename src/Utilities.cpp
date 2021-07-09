@@ -28,7 +28,7 @@ pcpp::IPv4Address resolveHostnameToIP(const char *hostname, pcpp::PcapLiveDevice
     return pcpp::NetworkUtils::getInstance().getIPv4Address(hostname, device, _, _ttl);
 }
 
-pcpp::Packet * reconstructIncompleteTcpLayer(uint8_t *tcpData, pcpp::Packet *original) {
+pcpp::Packet * parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original) {
     uint16_t src_port = 0;
     memcpy(&src_port, tcpData, sizeof(src_port));
     uint16_t dst_port = 0;

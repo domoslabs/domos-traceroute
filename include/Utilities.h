@@ -15,6 +15,6 @@ struct IncompleteTCP{
 pcpp::PcapLiveDevice *findDefaultDevice();
 pcpp::MacAddress getGatewayMac(pcpp::PcapLiveDevice *device);
 pcpp::IPv4Address resolveHostnameToIP(const char *hostname, pcpp::PcapLiveDevice *device);
-pcpp::Packet * reconstructIncompleteTcpLayer(uint8_t *tcpData, pcpp::Packet *original);
+pcpp::Packet * parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original);
 timespec timespec_diff(timespec start, timespec end);
 #endif //DOMOS_TRACEROUTE_UTILITIES_H

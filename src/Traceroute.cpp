@@ -9,36 +9,40 @@
 #include <Utilities.h>
 #include "Traceroute.h"
 #include "Probe.h"
-Traceroute::Traceroute(uint8_t n_paths, uint8_t max_ttl, ProbeType probeType) {
+Traceroute::Traceroute(uint32_t n_runs, uint8_t n_paths, uint8_t max_ttl, ProbeType probeType) {
+    this->n_runs = n_runs;
     this->n_paths = n_paths;
     this->max_ttl = max_ttl;
     this->probeType = probeType;
-    this->flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister>>();
+    this->flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister>>(n_runs);
 };
 Traceroute::~Traceroute() = default;
 
 void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t dstPort, pcpp::MacAddress gatewayMac,
                          pcpp::PcapLiveDevice *device) {
-    for(int srcPort = srcBasePort; srcPort < srcBasePort+n_paths; srcPort++){
-        std::vector<ProbeRegister> flow;
-        // Perform the traceroute backwards in order to bypass some weird network behaviour.
-        // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
-        for(uint8_t ttl = max_ttl; ttl > 0; ttl--){
-            auto *probe = new Probe(dstIp, srcPort, dstPort, ttl, gatewayMac, device, this->probeType);
-            probe->send();
+    for(int i = 0; i < this->n_runs; i++){
+        for(int srcPort = srcBasePort; srcPort < srcBasePort+n_paths; srcPort++){
+            std::vector<ProbeRegister> flow;
+            // Perform the traceroute backwards in order to bypass some weird network behaviour.
+            // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
+            for(uint8_t ttl = max_ttl; ttl > 0; ttl--){
+                auto *probe = new Probe(dstIp, srcPort, dstPort, ttl, gatewayMac, device, this->probeType);
+                probe->send();
 
-            timespec sent_time{};
-            clock_gettime(CLOCK_REALTIME, &sent_time);
+                timespec sent_time{};
+                clock_gettime(CLOCK_REALTIME, &sent_time);
 
-            ProbeRegister pr = ProbeRegister();
-            pr.register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time);
+                ProbeRegister pr = ProbeRegister();
+                pr.register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time);
 
-            flow.push_back(pr);
-            //Wait some time before sending the next probe, to avoid spamming them all at once.
-            usleep(20*1000);
+                flow.push_back(pr);
+                //Wait some time before sending the next probe, to avoid spamming them all at once.
+                usleep(20*1000);
+            }
+            this->flows->insert({srcPort, flow});
         }
-        this->flows->insert({srcPort, flow});
     }
+
 }
 
 void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>>& rawPackets) {
@@ -57,14 +61,12 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>>& ra
 }
 
 void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket) {
-    // Make sure the ICMP response actually contains a TCP and is not some other random ICMP packet.
-    if(receivedICMPPacket->isPacketOfType(pcpp::TCP)){
         //IPv4 Layer = 20
         //TCP Layer should also be 20, but is sometimes truncated to only 8, we need to fix that here
         uint8_t *payload = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>()->getLayerPayload();
         // TCP data starts at offset 20
-        auto icmpPacket = reconstructIncompleteTcpLayer(payload+20, receivedICMPPacket);
-        auto tcp = icmpPacket->getLayerOfType<pcpp::TcpLayer>();
+        auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
+        auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
         uint16_t flow_id = tcp->getSrcPort();
         auto &probe_registers = flows->at(flow_id);
         for(auto &probe_register : probe_registers){
@@ -72,12 +74,9 @@ void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket) {
             uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
             uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
             if(receivedSeq == sentSeq){
-                probe_register.register_received(std::make_shared<pcpp::Packet>(*icmpPacket), icmpPacket->getRawPacketReadOnly()->getPacketTimeStamp());
+                probe_register.register_received(std::make_shared<pcpp::Packet>(*innerPacket), innerPacket->getRawPacketReadOnly()->getPacketTimeStamp());
             }
         }
-    } else if (receivedICMPPacket->isPacketOfType(pcpp::UDP)){
-        throw std::runtime_error("UDP Analysis not yet implemented.");
-    }
 }
 
 void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket) {
