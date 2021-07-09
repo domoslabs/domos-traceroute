@@ -43,6 +43,7 @@ pcpp::Packet * reconstructIncompleteTcpLayer(uint8_t *tcpData, pcpp::Packet *ori
     packet->addLayer(newEthernetLayer);
 
     auto newIPLayer = new pcpp::IPv4Layer(originalIp->getSrcIPv4Address(), originalIp->getDstIPv4Address());
+    newIPLayer->getIPv4Header()->timeToLive = originalIp->getIPv4Header()->timeToLive;
     packet->addLayer(newIPLayer);
 
     auto newTcpLayer = new pcpp::TcpLayer(ntohs(src_port), ntohs(dst_port));

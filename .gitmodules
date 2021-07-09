@@ -4,3 +4,6 @@
 [submodule "third-party/libpcap"]
 	path = third-party/libpcap
 	url = https://github.com/the-tcpdump-group/libpcap.git
+[submodule "third-party/jsoncpp"]
+	path = third-party/jsoncpp
+	url = git@github.com:open-source-parsers/jsoncpp.git

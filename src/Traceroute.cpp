@@ -13,6 +13,7 @@ Traceroute::Traceroute(uint8_t n_paths, uint8_t max_ttl, ProbeType probeType) {
     this->n_paths = n_paths;
     this->max_ttl = max_ttl;
     this->probeType = probeType;
+    this->flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister>>();
 };
 Traceroute::~Traceroute() = default;
 
@@ -20,6 +21,8 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
                          pcpp::PcapLiveDevice *device) {
     for(int srcPort = srcBasePort; srcPort < srcBasePort+n_paths; srcPort++){
         std::vector<ProbeRegister> flow;
+        // Perform the traceroute backwards in order to bypass some weird network behaviour.
+        // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
         for(uint8_t ttl = max_ttl; ttl > 0; ttl--){
             auto *probe = new Probe(dstIp, srcPort, dstPort, ttl, gatewayMac, device, this->probeType);
             probe->send();
@@ -28,13 +31,13 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
             clock_gettime(CLOCK_REALTIME, &sent_time);
 
             ProbeRegister pr = ProbeRegister();
-            pr.register_sent(*probe->getPacket(), sent_time);
+            pr.register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time);
 
             flow.push_back(pr);
             //Wait some time before sending the next probe, to avoid spamming them all at once.
-            usleep(200*1000);
+            usleep(20*1000);
         }
-        this->flows.insert({srcPort, flow});
+        this->flows->insert({srcPort, flow});
     }
 }
 
@@ -63,15 +66,13 @@ void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket) {
         auto icmpPacket = reconstructIncompleteTcpLayer(payload+20, receivedICMPPacket);
         auto tcp = icmpPacket->getLayerOfType<pcpp::TcpLayer>();
         uint16_t flow_id = tcp->getSrcPort();
-        auto probe_registers = flows.at(flow_id);
-        for(auto probe_register : probe_registers){
+        auto &probe_registers = flows->at(flow_id);
+        for(auto &probe_register : probe_registers){
             pcpp::TcpLayer sentTcp = *probe_register.getSentPacket()->getLayerOfType<pcpp::TcpLayer>();
             uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
             uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
             if(receivedSeq == sentSeq){
-                probe_register.register_received(*icmpPacket, icmpPacket->getRawPacketReadOnly()->getPacketTimeStamp());
-                std::cout << "ICMP" << std::endl;
-                std::cout << probe_register.get_rtt()/1000000.0 << std::endl;
+                probe_register.register_received(std::make_shared<pcpp::Packet>(*icmpPacket), icmpPacket->getRawPacketReadOnly()->getPacketTimeStamp());
             }
         }
     } else if (receivedICMPPacket->isPacketOfType(pcpp::UDP)){
@@ -80,22 +81,43 @@ void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket) {
 }
 
 void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket) {
-    auto *tcp = tcpPacket->getLayerOfType<pcpp::TcpLayer>();
+    auto tcp = tcpPacket->getLayerOfType<pcpp::TcpLayer>();
     bool condition = (tcp->getTcpHeader()->rstFlag == 1) || (tcp->getTcpHeader()->ackFlag == 1);
     if(!condition){
         std::cout << "Unexpected TCP response." << std::endl;
         return;
     }
     uint16_t flow_id = tcp->getDstPort();
-    auto probe_registers = flows.at(flow_id);
-    for(auto probe_register : probe_registers){
+    auto &probe_registers = flows->at(flow_id);
+    for(auto &probe_register : probe_registers){
         pcpp::TcpLayer sentTcp = *probe_register.getSentPacket()->getLayerOfType<pcpp::TcpLayer>();
         uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
         uint32_t receivedAck = ntohl(tcp->getTcpHeader()->ackNumber);
         if(receivedAck-1 == sentSeq){
-            std::cout << "TCP" << std::endl;
-            probe_register.register_received(*tcpPacket, tcpPacket->getRawPacketReadOnly()->getPacketTimeStamp());
-            std::cout << probe_register.get_rtt()/1000000.0 << std::endl;
+            probe_register.register_received(std::make_shared<pcpp::Packet>(*tcpPacket), tcpPacket->getRawPacketReadOnly()->getPacketTimeStamp());
+            probe_register.setIsLast(true);
         }
     }
+}
+std::string Traceroute::to_json() {
+    std::stringstream json;
+    Json::Value root;
+
+    for (auto& iter: *this->flows) {
+
+        auto flow_id = std::to_string(iter.first);
+        //Necessary since we are tracerouting backwards
+        std::reverse(iter.second.begin(), iter.second.end());
+        Json::Value hops(Json::arrayValue);
+        for (auto hop: iter.second) {
+
+            hops.append(hop.to_json());
+            if (hop.isLast())
+                break;
+        }
+        root["flows"][flow_id] = hops;
+    }
+
+    json << root;
+    return json.str();
 }

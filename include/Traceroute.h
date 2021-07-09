@@ -16,7 +16,7 @@ private:
     uint8_t n_paths;
     uint8_t max_ttl;
     ProbeType probeType;
-    std::unordered_map<uint16_t, std::vector<ProbeRegister>> flows;
+    std::unordered_map<uint16_t, std::vector<ProbeRegister>> *flows;
     void analyzeTCPResponse(pcpp::Packet *tcpPacket);
     void analyzeICMPResponse(pcpp::Packet* icmpPacket);
 public:
@@ -26,6 +26,7 @@ public:
     void analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>>& rawPackets);
     ~Traceroute();
 
+    std::string to_json();
 };
 
 
