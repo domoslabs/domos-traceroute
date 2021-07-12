@@ -6,6 +6,7 @@
 #include <NetworkUtils.h>
 #include <netinet/in.h>
 #include <Probe.h>
+#include <sstream>
 
 pcpp::PcapLiveDevice *findDefaultDevice() {
     auto devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();

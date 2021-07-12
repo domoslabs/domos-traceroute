@@ -8,37 +8,50 @@
 #include <UdpLayer.h>
 #include <memory>
 #include <utility>
-#include <Utilities.h>
 #include "ProbeRegister.h"
 
-void ProbeRegister::register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp) {
-    this->sent_packet = std::move(packet);
-    this->sent_timestamp = timestamp;
-}
-void ProbeRegister::register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp) {
-    this->received_packet = std::move(packet);
-    this->received_timestamp = timestamp;
+ProbeRegister::ProbeRegister(uint32_t n_runs) {
+    this->sent_packets = std::vector<std::shared_ptr<pcpp::Packet>>(n_runs, nullptr);
+    this->received_packets = std::vector<std::shared_ptr<pcpp::Packet>>(n_runs, nullptr);
+    this->sent_timestamps = std::vector<timespec>(n_runs);
+    this->received_timestamps = std::vector<timespec>(n_runs);
 }
 
-unsigned int ProbeRegister::get_rtt() {
-    if(received_packet){
-        timespec diff = timespec_diff(sent_timestamp, received_timestamp);
-        return diff.tv_sec*1000000000+diff.tv_nsec;
+void ProbeRegister::register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx) {
+    this->sent_packets.at(idx) = std::move(packet);
+    this->sent_timestamps.at(idx) = timestamp;
+}
+void ProbeRegister::register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx) {
+    this->received_packets.at(idx) = std::move(packet);
+    this->received_timestamps.at(idx) = timestamp;
+}
+
+std::vector<unsigned int> * ProbeRegister::get_rtt() {
+    auto rtts = new std::vector<unsigned int>();
+    for(int i = 0; i < sent_packets.size(); i++){
+        auto sent_packet = sent_packets.at(i);
+        auto recv_packet = received_packets.at(i);
+        if(recv_packet == nullptr){
+            continue;
+        }
+        timespec diff = timespec_diff(sent_timestamps.at(i), received_timestamps.at(i));
+        rtts->push_back(diff.tv_sec*1000000000+diff.tv_nsec);
     }
-    return 0;
+
+    return rtts;
 }
 
 uint16_t ProbeRegister::get_flowhash() {
     uint16_t flowhash = 0;
-    pcpp::IPv4Layer ip = *sent_packet->getLayerOfType<pcpp::IPv4Layer>();
+    pcpp::IPv4Layer ip = *sent_packets.front()->getLayerOfType<pcpp::IPv4Layer>();
     flowhash += ip.getIPv4Header()->typeOfService + ip.getIPv4Header()->protocol;
     flowhash += (uint32_t)(ip.getIPv4Header()->ipSrc);
     flowhash += (uint32_t)(ip.getIPv4Header()->ipDst);
-    if(sent_packet->isPacketOfType(pcpp::TCP)){
-        pcpp::TcpLayer tcp = *sent_packet->getLayerOfType<pcpp::TcpLayer>();
+    if(sent_packets.front()->isPacketOfType(pcpp::TCP)){
+        pcpp::TcpLayer tcp = *sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
         flowhash += tcp.getTcpHeader()->portSrc + tcp.getTcpHeader()->portDst;
-    } else if (sent_packet->isPacketOfType(pcpp::UDP)){
-        pcpp::UdpLayer udp = *sent_packet->getLayerOfType<pcpp::UdpLayer>();
+    } else if (sent_packets.front()->isPacketOfType(pcpp::UDP)){
+        pcpp::UdpLayer udp = *sent_packets.front()->getLayerOfType<pcpp::UdpLayer>();
         flowhash += udp.getUdpHeader()->portSrc + udp.getUdpHeader()->portDst;
     }
     if (flowhash == 0)
@@ -46,8 +59,8 @@ uint16_t ProbeRegister::get_flowhash() {
     return flowhash;
 }
 
-std::shared_ptr<pcpp::Packet> ProbeRegister::getSentPacket() const {
-    return sent_packet;
+std::vector<std::shared_ptr<pcpp::Packet>> ProbeRegister::getSentPacket() {
+    return sent_packets;
 }
 
 void ProbeRegister::setIsLast(bool isLast) {
@@ -57,6 +70,14 @@ void ProbeRegister::setIsLast(bool isLast) {
 bool ProbeRegister::isLast() const {
     return is_last;
 }
+std::shared_ptr<pcpp::Packet> ProbeRegister::getFirstReceivedPacket() {
+    for(auto packet : this->received_packets){
+        if(packet != nullptr){
+            return packet;
+        }
+    }
+    return nullptr;
+}
 
 Json::Value ProbeRegister::to_json() {
     Json::Value root;
@@ -64,31 +85,36 @@ Json::Value ProbeRegister::to_json() {
 
     // Serialize the sent packet
     root["is_last"] = is_last;
-    root["sent"]["timestamp"] = std::to_string(this->sent_timestamp.tv_sec) + "." + std::to_string(this->sent_timestamp.tv_nsec);
+    //root["sent"]["timestamp"] = std::to_string(this->sent_timestamps.tv_sec) + "." + std::to_string(this->sent_timestamps.tv_nsec);
 
     // flow hash
     root["flowhash"] = get_flowhash();
 
     // IP layer
-    auto sent_ip = sent_packet->getLayerOfType<pcpp::IPv4Layer>();
+    auto sent_ip = sent_packets.front()->getLayerOfType<pcpp::IPv4Layer>();
     root["sent"]["ip"]["src"] = sent_ip->getSrcIPv4Address().toString();
     root["sent"]["ip"]["dst"] = sent_ip->getDstIPv4Address().toString();
     root["sent"]["ip"]["ttl"] = sent_ip->getIPv4Header()->timeToLive;
 
 
-    auto tcp_sent = sent_packet->getLayerOfType<pcpp::TcpLayer>();
+    auto tcp_sent = sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
     root["sent"]["sport"] = tcp_sent->getSrcPort();
     root["sent"]["dport"] = tcp_sent->getDstPort();
 
     // If present, serialize the received packet
-    if (received_packet) {
-        root["rtt_nsec"] = get_rtt();
-        root["received"]["timestamp"] = std::to_string(received_timestamp.tv_sec) + "." + std::to_string(received_timestamp.tv_nsec);
-        auto tcp_received = sent_packet->getLayerOfType<pcpp::TcpLayer>();
+    auto first_recv = getFirstReceivedPacket();
+    if (first_recv != nullptr) {
+        Json::Value rtts = Json::Value(Json::arrayValue);
+        for(unsigned int rtt : *get_rtt()){
+            rtts.append(rtt);
+        }
+        root["rtt_nsec"] = rtts;
+        //root["received"]["timestamp"] = std::to_string(received_timestamps.tv_sec) + "." + std::to_string(received_timestamps.tv_nsec);
+        auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
         root["received"]["sport"] = tcp_received->getSrcPort();
         root["received"]["dport"] = tcp_received->getDstPort();
         // IP layer
-        auto received_ip = received_packet->getLayerOfType<pcpp::IPv4Layer>();
+        auto received_ip = first_recv->getLayerOfType<pcpp::IPv4Layer>();
         root["received"]["ip"]["src"] = received_ip->getSrcIPv4Address().toString();
         root["received"]["ip"]["dst"] = received_ip->getDstIPv4Address().toString();
         root["received"]["ip"]["ttl"] = received_ip->getIPv4Header()->timeToLive;
@@ -98,5 +124,6 @@ Json::Value ProbeRegister::to_json() {
     }
     return root;
 }
+
 
 

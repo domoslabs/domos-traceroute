@@ -6,25 +6,30 @@
 #define DOMOS_TRACEROUTE_PROBEREGISTER_H
 #include <Packet.h>
 #include <json/json.h>
+#include "Utilities.h"
 class ProbeRegister {
 private:
-    std::shared_ptr<pcpp::Packet> sent_packet;
-    std::shared_ptr<pcpp::Packet> received_packet;
-    timespec sent_timestamp{};
-    timespec received_timestamp{};
+    std::vector<std::shared_ptr<pcpp::Packet>> sent_packets;
+    std::vector<std::shared_ptr<pcpp::Packet>> received_packets;
+    std::vector<timespec> sent_timestamps;
+    std::vector<timespec> received_timestamps;
     bool is_last = false;
+    std::shared_ptr<pcpp::Packet> getFirstReceivedPacket();
 public:
-    void register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp);
-    void register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp);
-    unsigned int get_rtt();
+    ProbeRegister(uint32_t n_runs);
+
+    void register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx);
+    void register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx);
+    std::vector<unsigned int> * get_rtt();
     uint16_t get_flowhash();
 
-    std::shared_ptr<pcpp::Packet> getSentPacket() const;
+    std::vector<std::shared_ptr<pcpp::Packet>> getSentPacket();
     Json::Value to_json();
 
     void setIsLast(bool isLast);
 
     bool isLast() const;
+
 };
 
 
