@@ -7,16 +7,16 @@
 #include <TcpLayer.h>
 #include <UdpLayer.h>
 #include <memory>
-#include <iostream>
+#include <utility>
 #include <Utilities.h>
 #include "ProbeRegister.h"
 
 void ProbeRegister::register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp) {
-    this->sent_packet = packet;
+    this->sent_packet = std::move(packet);
     this->sent_timestamp = timestamp;
 }
 void ProbeRegister::register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp) {
-    this->received_packet = packet;
+    this->received_packet = std::move(packet);
     this->received_timestamp = timestamp;
 }
 
@@ -80,7 +80,6 @@ Json::Value ProbeRegister::to_json() {
     root["sent"]["sport"] = tcp_sent->getSrcPort();
     root["sent"]["dport"] = tcp_sent->getDstPort();
 
-
     // If present, serialize the received packet
     if (received_packet) {
         root["rtt_nsec"] = get_rtt();
@@ -88,7 +87,6 @@ Json::Value ProbeRegister::to_json() {
         auto tcp_received = sent_packet->getLayerOfType<pcpp::TcpLayer>();
         root["received"]["sport"] = tcp_received->getSrcPort();
         root["received"]["dport"] = tcp_received->getDstPort();
-
         // IP layer
         auto received_ip = received_packet->getLayerOfType<pcpp::IPv4Layer>();
         root["received"]["ip"]["src"] = received_ip->getSrcIPv4Address().toString();

@@ -6,10 +6,12 @@
 #include "Capture.h"
 #include <iostream>
 #include <unistd.h>
+#include <fstream>
+
 const char* target = "google.com";
 uint16_t baseSrcPort = 33000;
 uint16_t dstPort = 80;
-uint16_t n_paths = 1;
+uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
 uint32_t n_runs = 1;
 pcpp::PcapLiveDevice *device;
@@ -26,12 +28,21 @@ int main(int argc, char* argv[])
     // Send out the probes, and sleep until we are done capturing
     auto *tr = new Traceroute(n_runs, n_paths, max_ttl, ProbeType::TCP);
     tr->execute(baseSrcPort, targetIp, dstPort, gatewayMac, device);
-    usleep(5*1000*1000);
+    // Sleep 2 secs while we capture...
+    usleep(2*1000*1000);
     // Stop the capture
     device->stopCapture();
     // Analyze the captured packets
     tr->analyze(capture->getRawPackets());
     device->close();
-    std::cout << tr->to_json() << std::endl;
+    std::string out = tr->to_json();
+    std::cout << out << std::endl;
+
+    std::ofstream file_id;
+    file_id.open("file.txt");
+
+    file_id << out;
+
+    file_id.close();
     return 0;
 }
