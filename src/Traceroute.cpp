@@ -37,7 +37,7 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
 
                 flow.push_back(pr);
                 //Wait some time before sending the next probe, to avoid spamming them all at once.
-                usleep(20*1000);
+                usleep(100*1000);
             }
             this->flows->insert({srcPort, flow});
         }

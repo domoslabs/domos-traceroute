@@ -94,7 +94,6 @@ Json::Value ProbeRegister::to_json() {
         root["received"]["ip"]["src"] = received_ip->getSrcIPv4Address().toString();
         root["received"]["ip"]["dst"] = received_ip->getDstIPv4Address().toString();
         root["received"]["ip"]["ttl"] = received_ip->getIPv4Header()->timeToLive;
-        root["received"]["ip"]["id"] = received_ip->getIPv4Header()->ipId;
     } else {
         root["received"] = nullvalue;
         root["rtt_nsec"] = nullvalue;

@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     // Send out the probes, and sleep until we are done capturing
     auto *tr = new Traceroute(n_runs, n_paths, max_ttl, ProbeType::TCP);
     tr->execute(baseSrcPort, targetIp, dstPort, gatewayMac, device);
-    usleep(2*1000*1000);
+    usleep(5*1000*1000);
     // Stop the capture
     device->stopCapture();
     // Analyze the captured packets

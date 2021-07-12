@@ -22,6 +22,8 @@ Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8
         auto newTcpLayer = new pcpp::TcpLayer(srcPort, dstPort);
         newTcpLayer->getTcpHeader()->sequenceNumber = htonl(ttl);
         newTcpLayer->getTcpHeader()->synFlag = 1;
+        // Important to disable timestamping, so that we receive SYN-ACK from the endpoint, and to avoid weird network behaviour.
+        newTcpLayer->addTcpOption(pcpp::TcpOptionBuilder(pcpp::TcpOptionType::PCPP_TCPOPT_TIMESTAMP, (uint16_t) false));
         this->packet->addLayer(newTcpLayer);
         this->packet->computeCalculateFields();// compute all calculated fields
     } else if (probe_type == ProbeType::UDP){
