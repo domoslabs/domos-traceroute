@@ -32,6 +32,7 @@ std::vector<unsigned int> * ProbeRegister::get_rtt() {
         auto sent_packet = sent_packets.at(i);
         auto recv_packet = received_packets.at(i);
         if(recv_packet == nullptr){
+            rtts->push_back(0);
             continue;
         }
         timespec diff = timespec_diff(sent_timestamps.at(i), received_timestamps.at(i));
@@ -100,15 +101,33 @@ Json::Value ProbeRegister::to_json() {
     auto tcp_sent = sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
     root["sent"]["sport"] = tcp_sent->getSrcPort();
     root["sent"]["dport"] = tcp_sent->getDstPort();
-
+    Json::Value sent_timespecs = Json::Value(Json::arrayValue);
+    for(timespec ts: this->sent_timestamps){
+        sent_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
+    }
+    root["sent"]["timestamp"] = sent_timespecs;
     // If present, serialize the received packet
     auto first_recv = getFirstReceivedPacket();
     if (first_recv != nullptr) {
         Json::Value rtts = Json::Value(Json::arrayValue);
         for(unsigned int rtt : *get_rtt()){
-            rtts.append(rtt);
+            if(rtt == 0){
+                rtts.append(nullvalue);
+            } else {
+                rtts.append(rtt);
+            }
         }
-        root["rtt_nsec"] = rtts;
+        Json::Value recv_timespecs = Json::Value(Json::arrayValue);
+        for(int i = 0; i < received_packets.size(); i++){
+            timespec ts = received_timestamps.at(i);
+            if(received_packets.at(i) == nullptr){
+                recv_timespecs.append(nullvalue);
+            } else {
+                recv_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
+            }
+        }
+        root["received"]["timestamp"] = recv_timespecs;
+        root["nsec_rtt"] = rtts;
         //root["received"]["timestamp"] = std::to_string(received_timestamps.tv_sec) + "." + std::to_string(received_timestamps.tv_nsec);
         auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
         root["received"]["sport"] = tcp_received->getSrcPort();

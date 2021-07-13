@@ -35,7 +35,6 @@ void Capture::onPacketCaptured(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* de
 void Capture::startCapture() {
     // Start capturing
     device->startCapture(Capture::onPacketCaptured, this);
-    std::cout << "Capturing..." << std::endl;
 }
 
 std::vector<std::shared_ptr<pcpp::RawPacket>> Capture::getRawPackets() {

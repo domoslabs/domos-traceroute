@@ -37,7 +37,7 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
             auto pr = flow.at(ttl-1);
             pr->register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time, run_idx);
             //Wait some time before sending the next probe, to avoid spamming them all at once.
-            usleep(100 * 1000);
+            usleep(40 * 1000);
         }
     }
 
