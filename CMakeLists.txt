@@ -35,17 +35,17 @@ ExternalProject_Add(
         BUILD_IN_SOURCE 1
 )
 
-add_executable(domos_traceroute src/main.cpp ${SOURCES})
+add_executable(domos-traceroute src/main.cpp ${SOURCES})
 # We need this
 find_package(Threads REQUIRED)
 # Add dependencies, so that cmake knows what to build in what order
 #add_dependencies(pcapplusplus libpcap)
-add_dependencies(domos_traceroute pcapplusplus)
-add_dependencies(domos_traceroute jsoncpp)
+add_dependencies(domos-traceroute pcapplusplus)
+add_dependencies(domos-traceroute jsoncpp)
 
 # Add the pcapplusplus header
 target_include_directories(
-        domos_traceroute
+        domos-traceroute
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/header
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/include
@@ -53,7 +53,7 @@ target_include_directories(
 
 # Link the built libraries, so that we can use them in our code
 target_link_libraries(
-        domos_traceroute PRIVATE
+        domos-traceroute PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPcap++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPacket++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libCommon++.a

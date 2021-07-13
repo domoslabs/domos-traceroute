@@ -23,5 +23,5 @@ Requires root access.
 
 To show the help message:
 ```bash
-./domos_traceroute -h
+./domos-traceroute -h
 ```

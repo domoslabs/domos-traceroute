@@ -84,6 +84,9 @@ void parse_args(int argc, char **argv){
 }
 int main(int argc, char* argv[])
 {
+    if(getuid() != 0){
+        throw std::runtime_error("Must be ran as root!");
+    }
     parse_args(argc, argv);
     std::cout << "Status: Resolving...\r" << std::flush;
     if(interface == nullptr) {
