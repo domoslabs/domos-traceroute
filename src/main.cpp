@@ -12,14 +12,15 @@
 const char* target = nullptr;
 uint16_t baseSrcPort = 33000;
 uint16_t dstPort = 80;
-uint16_t n_paths = 1;
+uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
 uint32_t n_runs = 3;
 const char* interface = nullptr;
+const char* file = nullptr;
 pcpp::PcapLiveDevice *device;
 void show_help(char* progname){
-    std::cout << "\nDomos Traceroute \n" << std::endl;
-    std::cout << "Usage: " << progname << " <target_host> [--sport] [--dport] [--ttl] [--n_paths] [--n_runs] [--interface] [--help]"<< std::endl;
+    std::cout << "\nA traceroute by Domos which can control per flow ECMP, and that way map paths to an endpoint. TCP only for now. \n" << std::endl;
+    std::cout << "Usage: " << progname << " <target_host> [--sport] [--dport] [--ttl] [--n_paths] [--n_runs] [--interface] [--file] [--help]"<< std::endl;
     std::cout << "target_host                     The hostname or IP of the target host" << std::endl;
     std::cout << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is ("<<baseSrcPort<<")" << std::endl;
     std::cout << "-d --dport                      The target destination port. Default is ("<<dstPort<<")" << std::endl;
@@ -27,10 +28,11 @@ void show_help(char* progname){
     std::cout << "-p --n_paths                    Amount of paths to probe. Default is ("<<n_paths<<")" << std::endl;
     std::cout << "-n --n_runs                     Amount of runs to perform. Default is ("<<n_runs<<")" << std::endl;
     std::cout << "-i --interface                  The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default." << std::endl;
+    std::cout << "-f --file                       File name to save the results to. Optional." << std::endl;
     std::cout << "-h --help                       Show this message." << std::endl;
 }
 void parse_args(int argc, char **argv){
-    const char *shortopts = "s:d:t:p:n:i:h";
+    const char *shortopts = "s:d:t:p:n:i:f:h";
     const struct option longopts[] = {
             {"sport", required_argument, 0, 's'},
             {"dport", required_argument, 0, 'd'},
@@ -38,6 +40,7 @@ void parse_args(int argc, char **argv){
             {"n_paths", required_argument, 0, 'p'},
             {"n_runs", required_argument, 0, 'n'},
             {"interface", required_argument, 0, 'i'},
+            {"file", required_argument, 0, 'f'},
             {"help", no_argument, 0, 'h'},
             {0, 0, 0, 0},
     };
@@ -62,6 +65,9 @@ void parse_args(int argc, char **argv){
                 break;
             case 'i':
                 interface = optarg;
+                break;
+            case 'f':
+                file = optarg;
                 break;
             case 'h':
                 show_help(argv[0]);
@@ -120,12 +126,14 @@ int main(int argc, char* argv[])
     device->close();
     std::string out = tr->to_json();
     std::cout << out << std::endl;
+    if(file != nullptr){
+        std::ofstream file_id;
+        file_id.open(file);
 
-    std::ofstream file_id;
-    file_id.open("file.txt");
+        file_id << out;
 
-    file_id << out;
+        file_id.close();
+    }
 
-    file_id.close();
     return 0;
 }
