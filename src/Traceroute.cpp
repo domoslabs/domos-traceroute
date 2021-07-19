@@ -69,7 +69,7 @@ void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket, uint32_t 
     uint16_t flow_id = tcp->getSrcPort();
     auto &probe_registers = flows->at(flow_id);
     for (auto &probe_register : probe_registers) {
-        pcpp::TcpLayer sentTcp = *probe_register->getSentPacket().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
+        pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
         uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
         uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
         if (receivedSeq == sentSeq) {
@@ -89,7 +89,7 @@ void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
     uint16_t flow_id = tcp->getDstPort();
     auto &probe_registers = flows->at(flow_id);
     for (auto &probe_register : probe_registers) {
-        pcpp::TcpLayer sentTcp = *probe_register->getSentPacket().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
+        pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
         uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
         uint32_t receivedAck = ntohl(tcp->getTcpHeader()->ackNumber);
         if (receivedAck - 1 == sentSeq) {
@@ -99,8 +99,27 @@ void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
         }
     }
 }
-
+bool sortByTTL(ProbeRegister* a, ProbeRegister* b){
+    return (a->getTTL() > b->getTTL());
+}
+void Traceroute::compress() {
+    /**
+     * Compress the traceroute graph by removing trailing unknowns at the end
+     */
+    for (auto &iter: *flows) {
+        auto hops = iter.second;
+        for (uint32_t i = hops.size()-1; i >= 1; i--) {
+            auto hop = hops.at(i);
+            auto next_hop = hops.at(i-1);
+            if (hop->getFirstReceivedPacket() == nullptr && next_hop->getFirstReceivedPacket() != nullptr) {
+                hop->setIsLast(true);
+                break;
+            }
+        }
+    }
+}
 std::string Traceroute::to_json() {
+    //compress();
     std::stringstream json;
     Json::Value root;
 
@@ -109,9 +128,9 @@ std::string Traceroute::to_json() {
         auto flow_id = std::to_string(iter.first);
         //Necessary since we are tracerouting backwards
         //std::reverse(iter.second.begin(), iter.second.end());
+        std::sort(iter.second.begin(), iter.second.end(), sortByTTL);
         Json::Value hops(Json::arrayValue);
         for (auto hop: iter.second) {
-
             hops.append(hop->to_json());
             if (hop->isLast())
                 break;

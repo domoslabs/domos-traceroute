@@ -10,11 +10,12 @@
 #include <utility>
 #include "ProbeRegister.h"
 
-ProbeRegister::ProbeRegister(uint32_t n_runs) {
+ProbeRegister::ProbeRegister(uint32_t n_runs, uint16_t ttl) {
     this->sent_packets = std::vector<std::shared_ptr<pcpp::Packet>>(n_runs, nullptr);
     this->received_packets = std::vector<std::shared_ptr<pcpp::Packet>>(n_runs, nullptr);
     this->sent_timestamps = std::vector<timespec>(n_runs);
     this->received_timestamps = std::vector<timespec>(n_runs);
+    this->ttl = ttl;
 }
 
 void ProbeRegister::register_sent(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx) {
@@ -60,7 +61,7 @@ uint16_t ProbeRegister::get_flowhash() {
     return flowhash;
 }
 
-std::vector<std::shared_ptr<pcpp::Packet>> ProbeRegister::getSentPacket() {
+std::vector<std::shared_ptr<pcpp::Packet>> ProbeRegister::getSentPackets() {
     return sent_packets;
 }
 
@@ -142,6 +143,10 @@ Json::Value ProbeRegister::to_json() {
         root["rtt_nsec"] = nullvalue;
     }
     return root;
+}
+
+uint16_t ProbeRegister::getTTL() {
+    return ttl;
 }
 
 

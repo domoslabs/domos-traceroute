@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
         // Perform the traceroute backwards in order to bypass some weird network behaviour.
         // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
         for (uint8_t ttl = max_ttl; ttl > 0; ttl--) {
-            auto pr = new ProbeRegister(n_runs);
+            auto pr = new ProbeRegister(n_runs, ttl);
             flow.push_back(pr);
         }
         flows->insert({srcPort, flow});

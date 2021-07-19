@@ -31,6 +31,7 @@ public:
     std::string to_json();
 
 
+    void compress();
 };
 
 
