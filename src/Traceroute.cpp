@@ -93,7 +93,6 @@ void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
         uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
         uint32_t receivedAck = ntohl(tcp->getTcpHeader()->ackNumber);
         if (receivedAck - 1 == sentSeq) {
-            std::cout << tcp->getTcpHeader()->ackNumber << std::endl;
             probe_register->register_received(std::make_shared<pcpp::Packet>(*tcpPacket),
                                              tcpPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
             probe_register->setIsLast(true);
