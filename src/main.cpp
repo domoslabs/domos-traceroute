@@ -10,7 +10,7 @@
 #include <getopt.h>
 
 const char* target = nullptr;
-uint16_t baseSrcPort = 33000;
+uint16_t baseSrcPort = 33001;
 uint16_t dstPort = 80;
 uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
@@ -96,7 +96,9 @@ int main(int argc, char* argv[])
     }
     pcpp::MacAddress gatewayMac = getGatewayMac(device);
     pcpp::IPv4Address targetIp = resolveHostnameToIP(target, device);
-
+    if(gatewayMac == pcpp::MacAddress::Zero || targetIp == pcpp::IPv4Address::Zero){
+        throw std::runtime_error("Could not resolve gateway mac or target ip.");
+    }
     device->open();
     // Populate the flows
     auto flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister*>>();
@@ -114,6 +116,7 @@ int main(int argc, char* argv[])
     auto capture = new Capture(baseSrcPort, dstPort, n_paths, device);
 
     for(int run_idx = 0; run_idx < n_runs; run_idx++){
+        usleep(100*1000);
         std::cout << "Status: Capturing... (" << run_idx+1 << "/" << n_runs << ")\r" << std::flush;
         capture->startCapture();
         // Send out the probes, and sleep until we are done capturing
@@ -124,7 +127,6 @@ int main(int argc, char* argv[])
         device->stopCapture();
         // Analyze the captured packets
         tr->analyze(capture->getRawPackets(), run_idx);
-
     }
     device->close();
     std::string out = tr->to_json();

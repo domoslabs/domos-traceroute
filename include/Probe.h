@@ -21,7 +21,7 @@ private:
     pcpp::PcapLiveDevice *device = nullptr;
 public:
     Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8_t ttl, pcpp::MacAddress gatewayMac,
-          pcpp::PcapLiveDevice *device, ProbeType probe_type);
+          pcpp::PcapLiveDevice *device, ProbeType probe_type, uint32_t n_run);
     ~Probe();
     void send();
 

@@ -29,10 +29,12 @@ static std::vector<std::shared_ptr<pcpp::RawPacket>> packets;
 void Capture::onPacketCaptured(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie){
     timespec recv_time{};
     clock_gettime(CLOCK_REALTIME, &recv_time);
-    //packet->setPacketTimeStamp(recv_time);
+    packet->setPacketTimeStamp(recv_time);
     packets.push_back(std::make_shared<pcpp::RawPacket>(*packet));
 }
 void Capture::startCapture() {
+    // Clear the packet array, in order for multiple runs to not include packets from previous runs
+    packets.clear();
     // Start capturing
     device->startCapture(Capture::onPacketCaptured, this);
 }

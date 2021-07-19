@@ -28,7 +28,7 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
         // Perform the traceroute backwards in order to bypass some weird network behaviour.
         // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
         for (uint8_t ttl = max_ttl; ttl > 0; ttl--) {
-            auto *probe = new Probe(dstIp, srcPort, dstPort, ttl, gatewayMac, device, this->probeType);
+            auto *probe = new Probe(dstIp, srcPort, dstPort, ttl, gatewayMac, device, this->probeType, run_idx);
             probe->send();
 
             timespec sent_time{};
@@ -74,7 +74,7 @@ void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket, uint32_t 
         uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
         if (receivedSeq == sentSeq) {
             probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
-                                             innerPacket->getRawPacketReadOnly()->getPacketTimeStamp(), run_idx);
+                                             receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
         }
     }
 }
@@ -93,8 +93,9 @@ void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
         uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
         uint32_t receivedAck = ntohl(tcp->getTcpHeader()->ackNumber);
         if (receivedAck - 1 == sentSeq) {
+            std::cout << tcp->getTcpHeader()->ackNumber << std::endl;
             probe_register->register_received(std::make_shared<pcpp::Packet>(*tcpPacket),
-                                             tcpPacket->getRawPacketReadOnly()->getPacketTimeStamp(), run_idx);
+                                             tcpPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
             probe_register->setIsLast(true);
         }
     }

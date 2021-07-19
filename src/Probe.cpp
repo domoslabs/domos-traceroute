@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include "Probe.h"
 Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8_t ttl, pcpp::MacAddress gatewayMac,
-             pcpp::PcapLiveDevice *device, ProbeType probe_type) {
+             pcpp::PcapLiveDevice *device, ProbeType probe_type, uint32_t n_run) {
     this->device = device;
     this->packet = new pcpp::Packet(100);
     auto newEthernetLayer = new pcpp::EthLayer(device->getMacAddress(), gatewayMac);
@@ -24,6 +24,8 @@ Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8
         newTcpLayer->getTcpHeader()->synFlag = 1;
         // Important to disable timestamping, so that we receive SYN-ACK from the endpoint, and to avoid weird network behaviour.
         newTcpLayer->addTcpOption(pcpp::TcpOptionBuilder(pcpp::TcpOptionType::PCPP_TCPOPT_TIMESTAMP, (uint16_t) false));
+        newTcpLayer->addTcpOption(pcpp::TcpOptionBuilder(pcpp::TcpOptionType::PCPP_TCPOPT_SACK, (uint16_t) false));
+
         this->packet->addLayer(newTcpLayer);
         this->packet->computeCalculateFields();// compute all calculated fields
     } else if (probe_type == ProbeType::UDP){
