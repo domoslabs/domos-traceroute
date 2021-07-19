@@ -48,7 +48,8 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
     for (const auto &rawPacket : rawPackets) {
         pcpp::Packet packet(rawPacket.get());
         if (packet.isPacketOfType(pcpp::ICMP)) {
-            if (packet.getLayerOfType<pcpp::IcmpLayer>()->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED)) {
+            auto icmpLayer = packet.getLayerOfType<pcpp::IcmpLayer>();
+            if (icmpLayer->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED) || icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
                 analyzeICMPResponse(&packet, run_idx);
             }
         } else if (packet.isPacketOfType(pcpp::TCP)) {
@@ -60,23 +61,45 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
 }
 
 void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
-    //IPv4 Layer = 20
-    //TCP Layer should also be 20, but is sometimes truncated to only 8, we need to fix that here
-    uint8_t *payload = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>()->getLayerPayload();
-    // TCP data starts at offset 20
-    auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
-    auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
-    uint16_t flow_id = tcp->getSrcPort();
-    auto &probe_registers = flows->at(flow_id);
-    for (auto &probe_register : probe_registers) {
-        pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
-        uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
-        uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
-        if (receivedSeq == sentSeq) {
-            probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
-                                             receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+    if(probeType == ProbeType::TCP){
+        //IPv4 Layer = 20
+        //TCP Layer should also be 20, but is sometimes truncated to only 8, we need to fix that here
+        uint8_t *payload = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>()->getLayerPayload();
+        // TCP data starts at offset 20
+        auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
+        auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
+        uint16_t flow_id = tcp->getSrcPort();
+        auto &probe_registers = flows->at(flow_id);
+        for (auto &probe_register : probe_registers) {
+            pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
+            uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
+            uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
+            if (receivedSeq == sentSeq) {
+                probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
+                                                  receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+            }
+        }
+    } else if(probeType == ProbeType::UDP){
+        auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
+        auto innerIP = (pcpp::IPv4Layer *)innerUdp->getPrevLayer();
+        uint16_t flow_id = innerUdp->getSrcPort();
+        try {
+            auto &probe_registers = flows->at(flow_id);
+            for (auto &probe_register : probe_registers) {
+                pcpp::UdpLayer sentUdp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::UdpLayer>();
+                auto a = sentUdp.getUdpHeader()->headerChecksum;
+                auto b = innerIP->getIPv4Header()->ipId;
+                if (ntohs(sentUdp.getUdpHeader()->headerChecksum) == ntohs(innerIP->getIPv4Header()->ipId)) {
+                    probe_register->register_received(std::make_shared<pcpp::Packet>(*receivedICMPPacket),
+                                                      receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+                }
+            }
+        } catch(std::out_of_range) {
+            // Sometimes we receive random UDP packets, just ignore them if their ports dont match.
+            return;
         }
     }
+
 }
 
 void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
@@ -126,8 +149,7 @@ std::string Traceroute::to_json() {
     for (auto &iter: *this->flows) {
 
         auto flow_id = std::to_string(iter.first);
-        //Necessary since we are tracerouting backwards
-        //std::reverse(iter.second.begin(), iter.second.end());
+        // Not sure if necessary to sort by ttl since I suspect the json already kinda does it, but why not...
         std::sort(iter.second.begin(), iter.second.end(), sortByTTL);
         Json::Value hops(Json::arrayValue);
         for (auto hop: iter.second) {

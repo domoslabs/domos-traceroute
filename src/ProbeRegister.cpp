@@ -100,8 +100,15 @@ Json::Value ProbeRegister::to_json() {
 
 
     auto tcp_sent = sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
-    root["sent"]["sport"] = tcp_sent->getSrcPort();
-    root["sent"]["dport"] = tcp_sent->getDstPort();
+    auto udp_sent = sent_packets.front()->getLayerOfType<pcpp::UdpLayer>();
+    if(tcp_sent){
+        root["sent"]["sport"] = tcp_sent->getSrcPort();
+        root["sent"]["dport"] = tcp_sent->getDstPort();
+    } else if(udp_sent){
+        root["sent"]["sport"] = udp_sent->getSrcPort();
+        root["sent"]["dport"] = udp_sent->getDstPort();
+    }
+
     Json::Value sent_timespecs = Json::Value(Json::arrayValue);
     for(timespec ts: this->sent_timestamps){
         sent_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
@@ -131,8 +138,15 @@ Json::Value ProbeRegister::to_json() {
         root["nsec_rtt"] = rtts;
         //root["received"]["timestamp"] = std::to_string(received_timestamps.tv_sec) + "." + std::to_string(received_timestamps.tv_nsec);
         auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
-        root["received"]["sport"] = tcp_received->getSrcPort();
-        root["received"]["dport"] = tcp_received->getDstPort();
+        auto udp_received = first_recv->getLayerOfType<pcpp::UdpLayer>();
+        if(tcp_received){
+            root["received"]["sport"] = tcp_received->getSrcPort();
+            root["received"]["dport"] = tcp_received->getDstPort();
+        } else if(udp_received){
+            root["received"]["sport"] = udp_received->getSrcPort();
+            root["received"]["dport"] = udp_received->getDstPort();
+        }
+
         // IP layer
         auto received_ip = first_recv->getLayerOfType<pcpp::IPv4Layer>();
         root["received"]["ip"]["src"] = received_ip->getSrcIPv4Address().toString();

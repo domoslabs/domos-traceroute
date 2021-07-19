@@ -10,7 +10,7 @@
 #include <getopt.h>
 
 const char* target = nullptr;
-uint16_t baseSrcPort = 33001;
+uint16_t baseSrcPort = 33000;
 uint16_t dstPort = 80;
 uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
