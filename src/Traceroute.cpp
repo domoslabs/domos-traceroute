@@ -46,7 +46,6 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
         pcpp::Packet packet(rawPacket.get());
         if (packet.isPacketOfType(pcpp::ICMP)) {
             auto icmpLayer = packet.getLayerOfType<pcpp::IcmpLayer>();
-            auto a = icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE);
             if (icmpLayer->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED) || icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
                 if(probeType == ProbeType::TCP){
                     analyzeICMPTCPResponse(&packet, run_idx);
@@ -82,6 +81,7 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
     }
 }
 void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
+
     auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
     auto innerIP = (pcpp::IPv4Layer *)innerUdp->getPrevLayer();
     uint16_t flow_id = innerUdp->getSrcPort();
@@ -96,6 +96,10 @@ void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32
             if (ntohs(sentUdp.getUdpHeader()->headerChecksum) == ntohs(innerIP->getIPv4Header()->ipId)) {
                 probe_register->register_received(std::make_shared<pcpp::Packet>(*receivedICMPPacket),
                                                   receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+                auto icmpLayer = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>();
+                if(icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)){
+                    probe_register->setIsLast(true);
+                }
             }
         }
     } catch(std::out_of_range &e) {

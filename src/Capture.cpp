@@ -27,7 +27,8 @@ Capture::Capture(uint16_t baseSrcPort, uint16_t dstPort, uint16_t n_paths, pcpp:
 }
 static std::vector<std::shared_ptr<pcpp::RawPacket>> packets;
 void Capture::onPacketCaptured(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie){
-
+    // The library automatically timestamps the incoming packets.
+    // Attempting to timestamp them here will lead to a way worse accuracy.
     packets.push_back(std::make_shared<pcpp::RawPacket>(*packet));
 }
 void Capture::startCapture() {
