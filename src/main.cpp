@@ -10,6 +10,7 @@
 #include <getopt.h>
 
 const char* target = nullptr;
+ProbeType probeType = ProbeType::TCP;
 uint16_t baseSrcPort = 33000;
 uint16_t dstPort = 80;
 uint16_t n_paths = 10;
@@ -23,7 +24,8 @@ void show_help(char* progname){
     std::cout << "Usage: " << progname << " <target_host> [--sport] [--dport] [--ttl] [--n_paths] [--n_runs] [--interface] [--file] [--help]"<< std::endl;
     std::cout << "target_host                     The hostname or IP of the target host" << std::endl;
     std::cout << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is ("<<baseSrcPort<<")" << std::endl;
-    std::cout << "-d --dport                      The target destination port. Default is ("<<dstPort<<")" << std::endl;
+    std::cout << "-d --dport                      The target destination port. For TCP, a good port is 80. For UDP a good port is 33434. Default is ("<<dstPort<<")" << std::endl;
+    std::cout << "-u --udp                        Use UDP probes instead. Uses TCP by default." << std::endl;
     std::cout << "-t --ttl                        The time-to-live value to count up to. Default is ("<<max_ttl<<")" << std::endl;
     std::cout << "-p --n_paths                    Amount of paths to probe. Default is ("<<n_paths<<")" << std::endl;
     std::cout << "-n --n_runs                     Amount of runs to perform. Default is ("<<n_runs<<")" << std::endl;
@@ -32,10 +34,11 @@ void show_help(char* progname){
     std::cout << "-h --help                       Show this message." << std::endl;
 }
 void parse_args(int argc, char **argv){
-    const char *shortopts = "s:d:t:p:n:i:f:h";
+    const char *shortopts = "s:d:ut:p:n:i:f:h";
     const struct option longopts[] = {
             {"sport", required_argument, 0, 's'},
             {"dport", required_argument, 0, 'd'},
+            {"udp", required_argument, 0, 'u'},
             {"ttl", required_argument, 0, 't'},
             {"n_paths", required_argument, 0, 'p'},
             {"n_runs", required_argument, 0, 'n'},
@@ -53,6 +56,9 @@ void parse_args(int argc, char **argv){
                 break;
             case 'd':
                 dstPort = std::stoul(optarg);
+                break;
+            case 'u':
+                probeType = ProbeType::UDP;
                 break;
             case 't':
                 max_ttl = std::stoul(optarg);
@@ -77,7 +83,7 @@ void parse_args(int argc, char **argv){
                 std::exit(EXIT_FAILURE);
         }
     if (optind == argc) {
-        std::cerr << "Missing target. See --help" << std::endl;
+        std::cerr << "Missing target. See --help." << std::endl;
         std::exit(EXIT_FAILURE);
     }
     target = argv[optind];
@@ -85,7 +91,8 @@ void parse_args(int argc, char **argv){
 int main(int argc, char* argv[])
 {
     if(getuid() != 0){
-        throw std::runtime_error("Must be ran as root!");
+        std::cerr << "Insufficient privileges, please run as root." << std::endl;
+        std::exit(EXIT_FAILURE);
     }
     parse_args(argc, argv);
     std::cout << "Status: Resolving...\r" << std::flush;
@@ -112,7 +119,7 @@ int main(int argc, char* argv[])
         }
         flows->insert({srcPort, flow});
     }
-    auto *tr = new Traceroute(n_runs, n_paths, max_ttl, ProbeType::TCP, flows);
+    auto *tr = new Traceroute(n_paths, max_ttl, probeType, flows);
     auto capture = new Capture(baseSrcPort, dstPort, n_paths, device);
 
     for(int run_idx = 0; run_idx < n_runs; run_idx++){
@@ -129,8 +136,9 @@ int main(int argc, char* argv[])
         tr->analyze(capture->getRawPackets(), run_idx);
     }
     device->close();
+    // Create json
     std::string out = tr->to_json();
-    std::cout << out << std::endl;
+    // Write to file if file has been defined, otherwise write to terminal.
     if(file != nullptr){
         std::ofstream file_id;
         file_id.open(file);
@@ -138,6 +146,8 @@ int main(int argc, char* argv[])
         file_id << out;
 
         file_id.close();
+    } else {
+        std::cout << out << std::endl;
     }
 
     return 0;

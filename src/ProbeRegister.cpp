@@ -104,9 +104,11 @@ Json::Value ProbeRegister::to_json() {
     if(tcp_sent){
         root["sent"]["sport"] = tcp_sent->getSrcPort();
         root["sent"]["dport"] = tcp_sent->getDstPort();
+        root["type"] = "tcp";
     } else if(udp_sent){
         root["sent"]["sport"] = udp_sent->getSrcPort();
         root["sent"]["dport"] = udp_sent->getDstPort();
+        root["type"] = "udp";
     }
 
     Json::Value sent_timespecs = Json::Value(Json::arrayValue);
@@ -136,7 +138,6 @@ Json::Value ProbeRegister::to_json() {
         }
         root["received"]["timestamp"] = recv_timespecs;
         root["nsec_rtt"] = rtts;
-        //root["received"]["timestamp"] = std::to_string(received_timestamps.tv_sec) + "." + std::to_string(received_timestamps.tv_nsec);
         auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
         auto udp_received = first_recv->getLayerOfType<pcpp::UdpLayer>();
         if(tcp_received){

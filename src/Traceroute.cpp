@@ -10,9 +10,8 @@
 #include "Traceroute.h"
 #include "Probe.h"
 
-Traceroute::Traceroute(uint32_t n_runs, uint8_t n_paths, uint8_t max_ttl, ProbeType probeType,
-                       std::unordered_map<uint16_t, std::vector<ProbeRegister*>> *flows) {
-    this->n_runs = n_runs;
+Traceroute::Traceroute(uint8_t n_paths, uint8_t max_ttl, ProbeType probeType,
+                       std::unordered_map<uint16_t, std::vector<ProbeRegister *>> *flows) {
     this->n_paths = n_paths;
     this->max_ttl = max_ttl;
     this->probeType = probeType;
@@ -37,11 +36,9 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
             auto pr = flow.at(ttl-1);
             pr->register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time, run_idx);
             //Wait some time before sending the next probe, to avoid spamming them all at once.
-            usleep(40 * 1000);
+            usleep(50 * 1000);
         }
     }
-
-
 }
 
 void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &rawPackets, uint32_t run_idx) {
@@ -49,8 +46,13 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
         pcpp::Packet packet(rawPacket.get());
         if (packet.isPacketOfType(pcpp::ICMP)) {
             auto icmpLayer = packet.getLayerOfType<pcpp::IcmpLayer>();
+            auto a = icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE);
             if (icmpLayer->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED) || icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
-                analyzeICMPResponse(&packet, run_idx);
+                if(probeType == ProbeType::TCP){
+                    analyzeICMPTCPResponse(&packet, run_idx);
+                } else if(probeType == ProbeType::UDP){
+                    analyzeICMPUDPResponse(&packet, run_idx);
+                }
             }
         } else if (packet.isPacketOfType(pcpp::TCP)) {
             analyzeTCPResponse(&packet, run_idx);
@@ -60,48 +62,47 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
     }
 }
 
-void Traceroute::analyzeICMPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
-    if(probeType == ProbeType::TCP){
-        //IPv4 Layer = 20
-        //TCP Layer should also be 20, but is sometimes truncated to only 8, we need to fix that here
-        uint8_t *payload = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>()->getLayerPayload();
-        // TCP data starts at offset 20
-        auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
-        auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
-        uint16_t flow_id = tcp->getSrcPort();
+void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
+    //IPv4 Layer = 20
+    //TCP Layer should also be 20, but is sometimes truncated to only 8, we need to fix that here
+    uint8_t *payload = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>()->getLayerPayload();
+    // TCP data starts at offset 20
+    auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
+    auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
+    uint16_t flow_id = tcp->getSrcPort();
+    auto &probe_registers = flows->at(flow_id);
+    for (auto &probe_register : probe_registers) {
+        pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
+        uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
+        uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
+        if (receivedSeq == sentSeq) {
+            probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
+                                              receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+        }
+    }
+}
+void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
+    auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
+    auto innerIP = (pcpp::IPv4Layer *)innerUdp->getPrevLayer();
+    uint16_t flow_id = innerUdp->getSrcPort();
+    try {
         auto &probe_registers = flows->at(flow_id);
         for (auto &probe_register : probe_registers) {
-            pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
-            uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
-            uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
-            if (receivedSeq == sentSeq) {
-                probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
+            pcpp::UdpLayer sentUdp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::UdpLayer>();
+            // Here we compare the sent udp checksum with the received inner ip identification.
+            // Paris traceroute originally compared udp checksum with udp checksum, but the checksum of the received inner UDP
+            // can be rewritten when passing through NAT.
+            // Therefore we look at the received inner ip identification, but keep in mind that this is not supported in IPv6.
+            if (ntohs(sentUdp.getUdpHeader()->headerChecksum) == ntohs(innerIP->getIPv4Header()->ipId)) {
+                probe_register->register_received(std::make_shared<pcpp::Packet>(*receivedICMPPacket),
                                                   receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
             }
         }
-    } else if(probeType == ProbeType::UDP){
-        auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
-        auto innerIP = (pcpp::IPv4Layer *)innerUdp->getPrevLayer();
-        uint16_t flow_id = innerUdp->getSrcPort();
-        try {
-            auto &probe_registers = flows->at(flow_id);
-            for (auto &probe_register : probe_registers) {
-                pcpp::UdpLayer sentUdp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::UdpLayer>();
-                auto a = sentUdp.getUdpHeader()->headerChecksum;
-                auto b = innerIP->getIPv4Header()->ipId;
-                if (ntohs(sentUdp.getUdpHeader()->headerChecksum) == ntohs(innerIP->getIPv4Header()->ipId)) {
-                    probe_register->register_received(std::make_shared<pcpp::Packet>(*receivedICMPPacket),
-                                                      receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
-                }
-            }
-        } catch(std::out_of_range) {
-            // Sometimes we receive random UDP packets, just ignore them if their ports dont match.
-            return;
-        }
+    } catch(std::out_of_range &e) {
+        // Sometimes we receive random UDP packets, just ignore them if their ports dont match.
+        return;
     }
-
 }
-
 void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
     auto tcp = tcpPacket->getLayerOfType<pcpp::TcpLayer>();
     bool condition = (tcp->getTcpHeader()->rstFlag == 1) || (tcp->getTcpHeader()->ackFlag == 1);
@@ -138,6 +139,10 @@ void Traceroute::compress() {
                 hop->setIsLast(true);
                 break;
             }
+            // No trailing unknowns
+            if(hop->getFirstReceivedPacket() != nullptr){
+                break;
+            }
         }
     }
 }
@@ -145,9 +150,7 @@ std::string Traceroute::to_json() {
     compress();
     std::stringstream json;
     Json::Value root;
-
     for (auto &iter: *this->flows) {
-
         auto flow_id = std::to_string(iter.first);
         // Not sure if necessary to sort by ttl since I suspect the json already kinda does it, but why not...
         std::sort(iter.second.begin(), iter.second.end(), sortByTTL);
