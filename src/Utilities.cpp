@@ -10,8 +10,8 @@
 
 pcpp::PcapLiveDevice *findDefaultDevice() {
     auto devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
-    for(auto device : devList){
-        if(device->getDefaultGateway().isValid()){
+    for (auto device : devList) {
+        if (device->getDefaultGateway().isValid()) {
             return device;
         }
     }
@@ -29,11 +29,11 @@ pcpp::IPv4Address resolveHostnameToIP(const char *hostname, pcpp::PcapLiveDevice
     return pcpp::NetworkUtils::getInstance().getIPv4Address(hostname, device, _, _ttl);
 }
 
-pcpp::Packet * parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original) {
+pcpp::Packet *parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original) {
     uint16_t src_port = 0;
     memcpy(&src_port, tcpData, sizeof(src_port));
     uint16_t dst_port = 0;
-    memcpy(&dst_port, tcpData + sizeof(src_port), sizeof(dst_port ));
+    memcpy(&dst_port, tcpData + sizeof(src_port), sizeof(dst_port));
     uint32_t seq = 0;
     memcpy(&seq, tcpData + sizeof(src_port) + sizeof(dst_port), sizeof(seq));
     auto originalEth = original->getLayerOfType<pcpp::EthLayer>();
@@ -55,15 +55,15 @@ pcpp::Packet * parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original) {
     packet->getRawPacket()->setPacketTimeStamp(original->getRawPacket()->getPacketTimeStamp());
     return packet;
 }
-timespec timespec_diff(timespec start, timespec end)
-{
+
+timespec timespec_diff(timespec start, timespec end) {
     timespec temp{};
-    if ((end.tv_nsec-start.tv_nsec)<0) {
-        temp.tv_sec = end.tv_sec-start.tv_sec-1;
-        temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+    if ((end.tv_nsec - start.tv_nsec) < 0) {
+        temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+        temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
     } else {
-        temp.tv_sec = end.tv_sec-start.tv_sec;
-        temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+        temp.tv_sec = end.tv_sec - start.tv_sec;
+        temp.tv_nsec = end.tv_nsec - start.tv_nsec;
     }
     return temp;
 }

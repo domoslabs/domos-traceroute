@@ -22,22 +22,23 @@ void ProbeRegister::register_sent(std::shared_ptr<pcpp::Packet> packet, timespec
     this->sent_packets.at(idx) = std::move(packet);
     this->sent_timestamps.at(idx) = timestamp;
 }
+
 void ProbeRegister::register_received(std::shared_ptr<pcpp::Packet> packet, timespec timestamp, uint32_t idx) {
     this->received_packets.at(idx) = std::move(packet);
     this->received_timestamps.at(idx) = timestamp;
 }
 
-std::vector<unsigned int> * ProbeRegister::get_rtt() {
+std::vector<unsigned int> *ProbeRegister::get_rtt() {
     auto rtts = new std::vector<unsigned int>();
-    for(int i = 0; i < sent_packets.size(); i++){
+    for (int i = 0; i < sent_packets.size(); i++) {
         auto sent_packet = sent_packets.at(i);
         auto recv_packet = received_packets.at(i);
-        if(recv_packet == nullptr){
+        if (recv_packet == nullptr) {
             rtts->push_back(0);
             continue;
         }
         timespec diff = timespec_diff(sent_timestamps.at(i), received_timestamps.at(i));
-        rtts->push_back(diff.tv_sec*1000000000+diff.tv_nsec);
+        rtts->push_back(diff.tv_sec * 1000000000 + diff.tv_nsec);
     }
 
     return rtts;
@@ -47,12 +48,12 @@ uint16_t ProbeRegister::get_flowhash() {
     uint16_t flowhash = 0;
     pcpp::IPv4Layer ip = *sent_packets.front()->getLayerOfType<pcpp::IPv4Layer>();
     flowhash += ip.getIPv4Header()->typeOfService + ip.getIPv4Header()->protocol;
-    flowhash += (uint32_t)(ip.getIPv4Header()->ipSrc);
-    flowhash += (uint32_t)(ip.getIPv4Header()->ipDst);
-    if(sent_packets.front()->isPacketOfType(pcpp::TCP)){
+    flowhash += (uint32_t) (ip.getIPv4Header()->ipSrc);
+    flowhash += (uint32_t) (ip.getIPv4Header()->ipDst);
+    if (sent_packets.front()->isPacketOfType(pcpp::TCP)) {
         pcpp::TcpLayer tcp = *sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
         flowhash += tcp.getTcpHeader()->portSrc + tcp.getTcpHeader()->portDst;
-    } else if (sent_packets.front()->isPacketOfType(pcpp::UDP)){
+    } else if (sent_packets.front()->isPacketOfType(pcpp::UDP)) {
         pcpp::UdpLayer udp = *sent_packets.front()->getLayerOfType<pcpp::UdpLayer>();
         flowhash += udp.getUdpHeader()->portSrc + udp.getUdpHeader()->portDst;
     }
@@ -72,9 +73,10 @@ void ProbeRegister::setIsLast(bool isLast) {
 bool ProbeRegister::isLast() const {
     return is_last;
 }
+
 std::shared_ptr<pcpp::Packet> ProbeRegister::getFirstReceivedPacket() {
-    for(auto packet : this->received_packets){
-        if(packet != nullptr){
+    for (auto packet : this->received_packets) {
+        if (packet != nullptr) {
             return packet;
         }
     }
@@ -101,18 +103,18 @@ Json::Value ProbeRegister::to_json() {
 
     auto tcp_sent = sent_packets.front()->getLayerOfType<pcpp::TcpLayer>();
     auto udp_sent = sent_packets.front()->getLayerOfType<pcpp::UdpLayer>();
-    if(tcp_sent){
+    if (tcp_sent) {
         root["sent"]["sport"] = tcp_sent->getSrcPort();
         root["sent"]["dport"] = tcp_sent->getDstPort();
         root["type"] = "tcp";
-    } else if(udp_sent){
+    } else if (udp_sent) {
         root["sent"]["sport"] = udp_sent->getSrcPort();
         root["sent"]["dport"] = udp_sent->getDstPort();
         root["type"] = "udp";
     }
 
     Json::Value sent_timespecs = Json::Value(Json::arrayValue);
-    for(timespec ts: this->sent_timestamps){
+    for (timespec ts: this->sent_timestamps) {
         sent_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
     }
     root["sent"]["timestamp"] = sent_timespecs;
@@ -120,17 +122,17 @@ Json::Value ProbeRegister::to_json() {
     auto first_recv = getFirstReceivedPacket();
     if (first_recv != nullptr) {
         Json::Value rtts = Json::Value(Json::arrayValue);
-        for(unsigned int rtt : *get_rtt()){
-            if(rtt == 0){
+        for (unsigned int rtt : *get_rtt()) {
+            if (rtt == 0) {
                 rtts.append(nullvalue);
             } else {
                 rtts.append(rtt);
             }
         }
         Json::Value recv_timespecs = Json::Value(Json::arrayValue);
-        for(int i = 0; i < received_packets.size(); i++){
+        for (int i = 0; i < received_packets.size(); i++) {
             timespec ts = received_timestamps.at(i);
-            if(received_packets.at(i) == nullptr){
+            if (received_packets.at(i) == nullptr) {
                 recv_timespecs.append(nullvalue);
             } else {
                 recv_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
@@ -140,10 +142,10 @@ Json::Value ProbeRegister::to_json() {
         root["nsec_rtt"] = rtts;
         auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
         auto udp_received = first_recv->getLayerOfType<pcpp::UdpLayer>();
-        if(tcp_received){
+        if (tcp_received) {
             root["received"]["sport"] = tcp_received->getSrcPort();
             root["received"]["dport"] = tcp_received->getDstPort();
-        } else if(udp_received){
+        } else if (udp_received) {
             root["received"]["sport"] = udp_received->getSrcPort();
             root["received"]["dport"] = udp_received->getDstPort();
         }

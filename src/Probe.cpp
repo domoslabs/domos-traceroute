@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <PayloadLayer.h>
 #include "Probe.h"
+
 Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8_t ttl, pcpp::MacAddress gatewayMac,
              pcpp::PcapLiveDevice *device, ProbeType probe_type, uint32_t n_run) {
     this->device = device;
@@ -20,7 +21,7 @@ Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8
     newIPLayer->getIPv4Header()->timeToLive = ttl;
     newIPLayer->getIPv4Header()->fragmentOffset = PCPP_IP_DONT_FRAGMENT;
 
-    if(probe_type == ProbeType::TCP){
+    if (probe_type == ProbeType::TCP) {
         auto newTcpLayer = new pcpp::TcpLayer(srcPort, dstPort);
         newTcpLayer->getTcpHeader()->sequenceNumber = htonl(ttl);
         newTcpLayer->getTcpHeader()->synFlag = 1;
@@ -30,15 +31,15 @@ Probe::Probe(pcpp::IPv4Address dst_ip, uint16_t srcPort, uint16_t dstPort, uint8
         this->packet->addLayer(newTcpLayer);
 
         this->packet->computeCalculateFields();// compute all calculated fields
-    } else if (probe_type == ProbeType::UDP){
+    } else if (probe_type == ProbeType::UDP) {
 
         auto newUdpLayer = new pcpp::UdpLayer(srcPort, dstPort);
         this->packet->addLayer(newUdpLayer);
 
         unsigned char payload[] = {'N', 'S', 'M', 'N', 'C', 0x00, 0x00};
-        uint16_t identifier = srcPort+ttl;
-        payload[5] = ((unsigned char *)&identifier)[0];
-        payload[6] = ((unsigned char *)&identifier)[1];
+        uint16_t identifier = srcPort + ttl;
+        payload[5] = ((unsigned char *) &identifier)[0];
+        payload[6] = ((unsigned char *) &identifier)[1];
         auto newPayloadLayer = new pcpp::PayloadLayer(payload, sizeof(payload), false);
         this->packet->addLayer(newPayloadLayer);
         this->packet->computeCalculateFields();// compute all calculated fields
@@ -54,14 +55,14 @@ pcpp::Packet *Probe::getPacket() {
 }
 
 void Probe::send() {
-    if(!this->packet){
+    if (!this->packet) {
         throw std::runtime_error("No packet to send!");
     }
     device->sendPacket(*this->packet->getRawPacket());
 }
 
 
-Probe::~Probe(){
+Probe::~Probe() {
     packet = nullptr;
     device = nullptr;
 };

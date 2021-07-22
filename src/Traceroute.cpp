@@ -23,7 +23,7 @@ Traceroute::~Traceroute() = default;
 void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t dstPort, pcpp::MacAddress gatewayMac,
                          pcpp::PcapLiveDevice *device, uint32_t run_idx, uint32_t interval_delay) {
     for (int srcPort = srcBasePort; srcPort < srcBasePort + n_paths; srcPort++) {
-        std::vector<ProbeRegister*> flow = this->flows->at(srcPort);
+        std::vector<ProbeRegister *> flow = this->flows->at(srcPort);
         // Perform the traceroute backwards in order to bypass some weird network behaviour.
         // Because sometimes no SYN-ACK response is given if any of the previous nodes had their TTL reach 0.
         for (uint8_t ttl = max_ttl; ttl > 0; ttl--) {
@@ -33,7 +33,7 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
             timespec sent_time{};
             clock_gettime(CLOCK_REALTIME, &sent_time);
 
-            auto pr = flow.at(ttl-1);
+            auto pr = flow.at(ttl - 1);
             pr->register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time, run_idx);
             //Wait some time before sending the next probe, to avoid spamming them all at once.
             usleep(interval_delay * 1000);
@@ -46,10 +46,11 @@ void Traceroute::analyze(const std::vector<std::shared_ptr<pcpp::RawPacket>> &ra
         pcpp::Packet packet(rawPacket.get());
         if (packet.isPacketOfType(pcpp::ICMP)) {
             auto icmpLayer = packet.getLayerOfType<pcpp::IcmpLayer>();
-            if (icmpLayer->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED) || icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
-                if(probeType == ProbeType::TCP){
+            if (icmpLayer->isMessageOfType(pcpp::ICMP_TIME_EXCEEDED) ||
+                icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
+                if (probeType == ProbeType::TCP) {
                     analyzeICMPTCPResponse(&packet, run_idx);
-                } else if(probeType == ProbeType::UDP){
+                } else if (probeType == ProbeType::UDP) {
                     analyzeICMPUDPResponse(&packet, run_idx);
                 }
             }
@@ -80,10 +81,11 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
         }
     }
 }
+
 void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
 
     auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
-    auto innerIP = (pcpp::IPv4Layer *)innerUdp->getPrevLayer();
+    auto innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
     uint16_t flow_id = innerUdp->getSrcPort();
     try {
         auto &probe_registers = flows->at(flow_id);
@@ -97,16 +99,17 @@ void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32
                 probe_register->register_received(std::make_shared<pcpp::Packet>(*receivedICMPPacket),
                                                   receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
                 auto icmpLayer = receivedICMPPacket->getLayerOfType<pcpp::IcmpLayer>();
-                if(icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)){
+                if (icmpLayer->isMessageOfType(pcpp::ICMP_DEST_UNREACHABLE)) {
                     probe_register->setIsLast(true);
                 }
             }
         }
-    } catch(std::out_of_range &e) {
+    } catch (std::out_of_range &e) {
         // Sometimes we receive random UDP packets, just ignore them if their ports dont match.
         return;
     }
 }
+
 void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
     auto tcp = tcpPacket->getLayerOfType<pcpp::TcpLayer>();
     bool condition = (tcp->getTcpHeader()->rstFlag == 1) || (tcp->getTcpHeader()->ackFlag == 1);
@@ -122,37 +125,41 @@ void Traceroute::analyzeTCPResponse(pcpp::Packet *tcpPacket, uint32_t run_idx) {
         uint32_t receivedAck = ntohl(tcp->getTcpHeader()->ackNumber);
         if (receivedAck - 1 == sentSeq) {
             probe_register->register_received(std::make_shared<pcpp::Packet>(*tcpPacket),
-                                             tcpPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+                                              tcpPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
             probe_register->setIsLast(true);
         }
     }
 }
-bool sortByTTL(ProbeRegister* a, ProbeRegister* b){
+
+bool sortByTTL(ProbeRegister *a, ProbeRegister *b) {
     return (a->getTTL() > b->getTTL());
 }
+
 void Traceroute::compress() {
     /**
      * Compress the traceroute graph by removing trailing unknowns at the end
      */
     for (auto &iter: *flows) {
         auto hops = iter.second;
-        for (uint32_t i = hops.size()-1; i >= 1; i--) {
+        for (uint32_t i = hops.size() - 1; i >= 1; i--) {
             auto hop = hops.at(i);
-            auto next_hop = hops.at(i-1);
+            auto next_hop = hops.at(i - 1);
             if (hop->getFirstReceivedPacket() == nullptr && next_hop->getFirstReceivedPacket() != nullptr) {
                 hop->setIsLast(true);
                 break;
             }
             // No trailing unknowns
-            if(hop->getFirstReceivedPacket() != nullptr){
+            if (hop->getFirstReceivedPacket() != nullptr) {
                 break;
             }
         }
     }
 }
+
 std::string Traceroute::to_json() {
     compress();
-    std::stringstream json;
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = ""; // If you want whitespace-less output
     Json::Value root;
     for (auto &iter: *this->flows) {
         auto flow_id = std::to_string(iter.first);
@@ -166,7 +173,5 @@ std::string Traceroute::to_json() {
         }
         root["flows"][flow_id] = hops;
     }
-
-    json << root;
-    return json.str();
+    return Json::writeString(builder, root);
 }
