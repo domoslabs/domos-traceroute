@@ -21,7 +21,7 @@ Traceroute::Traceroute(uint8_t n_paths, uint8_t max_ttl, ProbeType probeType,
 Traceroute::~Traceroute() = default;
 
 void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t dstPort, pcpp::MacAddress gatewayMac,
-                         pcpp::PcapLiveDevice *device, uint32_t run_idx) {
+                         pcpp::PcapLiveDevice *device, uint32_t run_idx, uint32_t interval_delay) {
     for (int srcPort = srcBasePort; srcPort < srcBasePort + n_paths; srcPort++) {
         std::vector<ProbeRegister*> flow = this->flows->at(srcPort);
         // Perform the traceroute backwards in order to bypass some weird network behaviour.
@@ -36,7 +36,7 @@ void Traceroute::execute(uint16_t srcBasePort, pcpp::IPv4Address dstIp, uint16_t
             auto pr = flow.at(ttl-1);
             pr->register_sent(std::make_shared<pcpp::Packet>(*probe->getPacket()), sent_time, run_idx);
             //Wait some time before sending the next probe, to avoid spamming them all at once.
-            usleep(50 * 1000);
+            usleep(interval_delay * 1000);
         }
     }
 }
