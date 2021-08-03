@@ -59,7 +59,7 @@ void parse_args(int argc, char **argv) {
     const struct option longopts[] = {
             {"sport",     required_argument, 0, 's'},
             {"dport",     required_argument, 0, 'd'},
-            {"udp",       required_argument, 0, 'u'},
+            {"udp",       no_argument, 0, 'u'},
             {"ttl",       required_argument, 0, 't'},
             {"n_paths",   required_argument, 0, 'p'},
             {"n_runs",    required_argument, 0, 'n'},

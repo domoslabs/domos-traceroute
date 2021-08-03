@@ -124,7 +124,7 @@ Json::Value ProbeRegister::to_json() {
         Json::Value rtts = Json::Value(Json::arrayValue);
         for (unsigned int rtt : *get_rtt()) {
             if (rtt == 0) {
-                rtts.append(nullvalue);
+                rtts.append(-1);
             } else {
                 rtts.append(rtt);
             }
@@ -133,7 +133,7 @@ Json::Value ProbeRegister::to_json() {
         for (int i = 0; i < received_packets.size(); i++) {
             timespec ts = received_timestamps.at(i);
             if (received_packets.at(i) == nullptr) {
-                recv_timespecs.append(nullvalue);
+                recv_timespecs.append("-1.0");
             } else {
                 recv_timespecs.append(std::to_string(ts.tv_sec) + "." + std::to_string(ts.tv_nsec));
             }
@@ -142,12 +142,13 @@ Json::Value ProbeRegister::to_json() {
         root["nsec_rtt"] = rtts;
         auto tcp_received = first_recv->getLayerOfType<pcpp::TcpLayer>();
         auto udp_received = first_recv->getLayerOfType<pcpp::UdpLayer>();
+        // Values are switched because we are receiving...
         if (tcp_received) {
-            root["received"]["sport"] = tcp_received->getSrcPort();
-            root["received"]["dport"] = tcp_received->getDstPort();
+            root["received"]["sport"] = tcp_received->getDstPort();
+            root["received"]["dport"] = tcp_received->getSrcPort();
         } else if (udp_received) {
-            root["received"]["sport"] = udp_received->getSrcPort();
-            root["received"]["dport"] = udp_received->getDstPort();
+            root["received"]["sport"] = udp_received->getDstPort();
+            root["received"]["dport"] = udp_received->getSrcPort();
         }
 
         // IP layer
