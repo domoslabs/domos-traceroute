@@ -158,7 +158,7 @@ Json::Value ProbeRegister::to_json() {
         root["received"]["ip"]["ttl"] = received_ip->getIPv4Header()->timeToLive;
     } else {
         root["received"] = nullvalue;
-        root["rtt_nsec"] = nullvalue;
+        root["nsec_rtt"] = nullvalue;
     }
     return root;
 }
