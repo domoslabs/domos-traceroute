@@ -130,10 +130,14 @@ int main(int argc, char *argv[]) {
         device = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIpOrName(interface);
     }
     pcpp::MacAddress gatewayMac = getGatewayMac(device);
-    pcpp::IPv4Address targetIp = resolveHostnameToIP(target, device);
-    if (gatewayMac == pcpp::MacAddress::Zero || targetIp == pcpp::IPv4Address::Zero) {
-        throw std::runtime_error("Could not resolve gateway mac or target ip.");
+    pcpp::IPv4Address targetIp = pcpp::IPv4Address(target);
+    if(!targetIp.isValid()){
+        targetIp = resolveHostnameToIP(target, device);
+        if (gatewayMac == pcpp::MacAddress::Zero || targetIp == pcpp::IPv4Address::Zero) {
+            throw std::runtime_error("Could not resolve gateway mac or target ip.");
+        }
     }
+
     device->open();
     // Populate the flows
     auto flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister *>>();
