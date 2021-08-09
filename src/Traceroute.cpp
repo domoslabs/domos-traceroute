@@ -70,16 +70,22 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
     auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
     auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
     uint16_t flow_id = tcp->getSrcPort();
-    auto &probe_registers = flows->at(flow_id);
-    for (auto &probe_register : probe_registers) {
-        pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
-        uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
-        uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
-        if (receivedSeq == sentSeq) {
-            probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
-                                              receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+    try{
+        auto &probe_registers = flows->at(flow_id);
+        for (auto &probe_register : probe_registers) {
+            pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
+            uint32_t sentSeq = ntohl(sentTcp.getTcpHeader()->sequenceNumber);
+            uint32_t receivedSeq = ntohl(tcp->getTcpHeader()->sequenceNumber);
+            if (receivedSeq == sentSeq) {
+                probe_register->register_received(std::make_shared<pcpp::Packet>(*innerPacket),
+                                                  receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
+            }
         }
+    } catch (std::out_of_range& e){
+        //If we get here, means we have intercepted a wrong packet.
+        return;
     }
+
 }
 
 void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
@@ -141,7 +147,7 @@ void Traceroute::compress() {
      */
     for (auto &iter: *flows) {
         auto hops = iter.second;
-        for (uint32_t i = hops.size() - 1; i >= 1; i--) {
+        for (uint32_t i = hops.size() - 1; i > 0; i--) {
             auto hop = hops.at(i);
             auto next_hop = hops.at(i - 1);
             if (hop->getFirstReceivedPacket() == nullptr && next_hop->getFirstReceivedPacket() != nullptr) {
