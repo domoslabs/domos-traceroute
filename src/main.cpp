@@ -59,7 +59,7 @@ void parse_args(int argc, char **argv) {
     const struct option longopts[] = {
             {"sport",     required_argument, 0, 's'},
             {"dport",     required_argument, 0, 'd'},
-            {"udp",       no_argument, 0, 'u'},
+            {"udp",       no_argument,       0, 'u'},
             {"ttl",       required_argument, 0, 't'},
             {"n_paths",   required_argument, 0, 'p'},
             {"n_runs",    required_argument, 0, 'n'},
@@ -131,8 +131,8 @@ int main(int argc, char *argv[]) {
     }
     pcpp::MacAddress gatewayMac = getGatewayMac(device);
     pcpp::IPv4Address targetIp = pcpp::IPv4Address(target);
-    if(!targetIp.isValid()){
-        targetIp = resolveHostnameToIP(target, device);
+    if (!targetIp.isValid()) {
+        targetIp = getHostNameIpAddress(target);
         if (gatewayMac == pcpp::MacAddress::Zero || targetIp == pcpp::IPv4Address::Zero) {
             throw std::runtime_error("Could not resolve gateway mac or target ip.");
         }

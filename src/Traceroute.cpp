@@ -70,7 +70,7 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
     auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
     auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
     uint16_t flow_id = tcp->getSrcPort();
-    try{
+    try {
         auto &probe_registers = flows->at(flow_id);
         for (auto &probe_register : probe_registers) {
             pcpp::TcpLayer sentTcp = *probe_register->getSentPackets().at(run_idx)->getLayerOfType<pcpp::TcpLayer>();
@@ -81,7 +81,7 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
                                                   receivedICMPPacket->getRawPacket()->getPacketTimeStamp(), run_idx);
             }
         }
-    } catch (std::out_of_range& e){
+    } catch (std::out_of_range &e) {
         //If we get here, means we have intercepted a wrong packet.
         return;
     }

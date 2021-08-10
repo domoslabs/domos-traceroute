@@ -7,6 +7,9 @@
 #include <netinet/in.h>
 #include <Probe.h>
 #include <sstream>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <iostream>
 
 pcpp::PcapLiveDevice *findDefaultDevice() {
     auto devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
@@ -27,6 +30,41 @@ pcpp::IPv4Address resolveHostnameToIP(const char *hostname, pcpp::PcapLiveDevice
     double _ = 0;
     uint32_t _ttl = 0;
     return pcpp::NetworkUtils::getInstance().getIPv4Address(hostname, device, _, _ttl);
+}
+
+std::string getHostNameIpAddress(const char *a_domainName) {
+    struct addrinfo hints{}, *res;
+    int errcode;
+    char addrstr[100];
+    void *ptr;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags |= AI_CANONNAME;
+
+    errcode = getaddrinfo(a_domainName, NULL, &hints, &res);
+    if (errcode != 0) {
+        std::cout << "getaddrinfo failed with error: " << errcode << std::endl;
+        return "";
+    }
+
+    while (res) {
+        switch (res->ai_family) {
+            case AF_INET:
+                ptr = &((struct sockaddr_in *) res->ai_addr)->sin_addr;
+                inet_ntop(res->ai_family, ptr, addrstr, 100);
+                break;
+            case AF_INET6:
+                ptr = &((struct sockaddr_in6 *) res->ai_addr)->sin6_addr;
+                inet_ntop(res->ai_family, ptr, addrstr, 100);
+                break;
+        }
+
+        res = res->ai_next;
+    }
+
+    return addrstr; // retuns wrong address as it interates past the domain name to the gateway ip
 }
 
 pcpp::Packet *parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original) {
