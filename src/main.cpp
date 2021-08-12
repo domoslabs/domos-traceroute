@@ -11,7 +11,7 @@
 
 const char *target = nullptr;
 ProbeType probeType = ProbeType::TCP;
-uint16_t baseSrcPort = 33000;
+uint16_t baseSrcPort = rand() % (33400 - 33000 + 1) + 33000;
 uint16_t dstPort = 80;
 uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
@@ -31,8 +31,8 @@ void show_help(char *progname) {
               << std::endl;
     std::cout << "target_host                     The hostname or IP of the target host" << std::endl;
     std::cout
-            << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is ("
-            << baseSrcPort << ")" << std::endl;
+            << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 33400]"
+            << std::endl;
     std::cout
             << "-d --dport                      The target destination port. For TCP, a good port is 80. For UDP a good port is 33434. Default is ("
             << dstPort << ")" << std::endl;
