@@ -12,6 +12,10 @@ set(
         src/Traceroute.cpp
         src/Capture.cpp include/Capture.h
         src/ProbeRegister.cpp include/ProbeRegister.h)
+# Disable building tests for random library
+option(Random_BuildTests "Build the unit tests" ON)
+set(Random_BuildTests OFF)
+
 include(ExternalProject)
 # Build the jsoncpp library
 ExternalProject_Add(
