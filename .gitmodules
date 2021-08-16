@@ -4,3 +4,9 @@
 [submodule "third-party/jsoncpp"]
 	path = third-party/jsoncpp
 	url = https://github.com/open-source-parsers/jsoncpp.git
+[submodule "build/third-party"]
+	path = build/third-party
+	url = https://github.com/effolkronium/random.git
+[submodule "third-party/random"]
+	path = third-party/random
+	url = https://github.com/effolkronium/random.git

@@ -8,10 +8,12 @@
 #include <unistd.h>
 #include <fstream>
 #include <getopt.h>
+#include "effolkronium/random.hpp"
 
+using Random = effolkronium::random_static;
 const char *target = nullptr;
 ProbeType probeType = ProbeType::TCP;
-uint16_t baseSrcPort = rand() % (33400 - 33000 + 1) + 33000;
+uint16_t baseSrcPort = Random::get<uint16_t>(33000, 40000);
 uint16_t dstPort = 80;
 uint16_t n_paths = 10;
 uint16_t max_ttl = 15;
@@ -155,7 +157,9 @@ int main(int argc, char *argv[]) {
     auto capture = new Capture(baseSrcPort, dstPort, n_paths, device);
 
     for (int run_idx = 0; run_idx < n_runs; run_idx++) {
-        std::cout << "Status: Capturing... (" << run_idx + 1 << "/" << n_runs << ")\r" << std::flush;
+        std::cout << "Status: Capturing on base port " << std::to_string(baseSrcPort) << "... (" << run_idx + 1 << "/"
+                  << n_runs
+                  << ")\r" << std::flush;
         capture->startCapture();
         // Send out the probes, and sleep until we are done capturing
         tr->execute(baseSrcPort, targetIp, dstPort, gatewayMac, device, run_idx, interval_delay);

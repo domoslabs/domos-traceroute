@@ -17,7 +17,7 @@ include(ExternalProject)
 ExternalProject_Add(
         jsoncpp
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp
-        PATCH_COMMAND  mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build
+        PATCH_COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build
         BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build
         BUILD_COMMAND cmake -D JSONCPP_WITH_TESTS=OFF JSONCPP_WITH_POST_BUILD_UNITTEST=OFF BUILD_SHARED_LIBS=OFF BUILD_OBJECT_LIBS=OFF .. COMMAND make
         INSTALL_COMMAND ""
@@ -43,6 +43,8 @@ find_package(Threads REQUIRED)
 add_dependencies(domos-traceroute pcapplusplus)
 add_dependencies(domos-traceroute jsoncpp)
 
+add_subdirectory(third-party/random)
+
 # Add the pcapplusplus header
 target_include_directories(
         domos-traceroute
@@ -58,6 +60,7 @@ target_link_libraries(
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPacket++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libCommon++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build/lib/libjsoncpp.a
+        effolkronium_random
         Threads::Threads
         pcap
 )
