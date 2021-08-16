@@ -69,6 +69,10 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
     // TCP data starts at offset 20
     auto innerPacket = parseInnerTcpPacket(payload + 20, receivedICMPPacket);
     auto tcp = innerPacket->getLayerOfType<pcpp::TcpLayer>();
+    if (tcp == nullptr) {
+        // If we receive an icmp which does not contain an inner tcp for some reason...
+        return;
+    }
     uint16_t flow_id = tcp->getSrcPort();
     try {
         auto &probe_registers = flows->at(flow_id);
@@ -89,16 +93,13 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
 }
 
 void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
-    pcpp::UdpLayer *innerUdp;
-    pcpp::IPv4Layer *innerIP;
-    try {
-        innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
-        std::cout << &innerUdp << std::endl;
-        innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
-    } catch (std::exception &e) {
-        std::cerr << e.what() << std::endl;
+
+    auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
+    if (innerUdp == nullptr) {
+        // If we receive an icmp which does not contain an inner udp for some reason...
         return;
     }
+    auto innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
 
     uint16_t flow_id = innerUdp->getSrcPort();
     try {
