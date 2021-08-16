@@ -33,7 +33,7 @@ void show_help(char *progname) {
               << std::endl;
     std::cout << "target_host                     The hostname or IP of the target host" << std::endl;
     std::cout
-            << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 33400]"
+            << "-s --sport                      A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 40000]"
             << std::endl;
     std::cout
             << "-d --dport                      The target destination port. For TCP, a good port is 80. For UDP a good port is 33434. Default is ("
