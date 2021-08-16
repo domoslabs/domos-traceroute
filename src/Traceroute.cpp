@@ -89,9 +89,16 @@ void Traceroute::analyzeICMPTCPResponse(pcpp::Packet *receivedICMPPacket, uint32
 }
 
 void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32_t run_idx) {
+    pcpp::UdpLayer *innerUdp;
+    pcpp::IPv4Layer *innerIP;
+    try {
+        innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
+        innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
+    } catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return;
+    }
 
-    auto innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
-    auto innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
     uint16_t flow_id = innerUdp->getSrcPort();
     try {
         auto &probe_registers = flows->at(flow_id);
