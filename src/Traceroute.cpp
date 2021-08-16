@@ -93,6 +93,7 @@ void Traceroute::analyzeICMPUDPResponse(pcpp::Packet *receivedICMPPacket, uint32
     pcpp::IPv4Layer *innerIP;
     try {
         innerUdp = receivedICMPPacket->getLayerOfType<pcpp::UdpLayer>();
+        std::cout << &innerUdp << std::endl;
         innerIP = (pcpp::IPv4Layer *) innerUdp->getPrevLayer();
     } catch (std::exception &e) {
         std::cerr << e.what() << std::endl;
