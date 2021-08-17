@@ -72,9 +72,9 @@ void parse_args(int argc, char **argv) {
             {"timeout",   required_argument, 0, 'T'},
             {"interface", required_argument, 0, 'i'},
             {"file",      required_argument, 0, 'f'},
-            {"compress",  required_argument, 0, 'c'},
+            {"compress",  no_argument,       0, 'c'},
             {"help",      no_argument,       0, 'h'},
-            {0,           0,                 0, 0},
+            {0, 0,                           0, 0},
     };
     int c, option_index;
     while ((c = getopt_long(argc, argv, shortopts, longopts, &option_index)) != -1)
@@ -193,7 +193,6 @@ int main(int argc, char *argv[]) {
             file_id.open(file);
             file_id << out;
             file_id.close();
-
         }
     } else {
         std::cout << out << std::endl;
