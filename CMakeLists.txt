@@ -57,7 +57,8 @@ add_dependencies(domos-traceroute pcapplusplus)
 add_dependencies(domos-traceroute jsoncpp)
 add_dependencies(domos-traceroute libbzip2)
 
-add_subdirectory(third-party/random)
+# EXCLUDE_FROM_ALL makes it so that random is not installed when calling make install...
+add_subdirectory(third-party/random EXCLUDE_FROM_ALL)
 
 # Add the pcapplusplus header
 target_include_directories(
@@ -80,3 +81,4 @@ target_link_libraries(
         Threads::Threads
         pcap
 )
+install(TARGETS domos-traceroute)
