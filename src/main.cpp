@@ -22,6 +22,7 @@ uint32_t interval_delay = 50;
 uint32_t timeout_delay = 500;
 const char *interface = nullptr;
 const char *file = nullptr;
+bool compress = false;
 pcpp::PcapLiveDevice *device;
 
 void show_help(char *progname) {
@@ -53,11 +54,13 @@ void show_help(char *progname) {
             << "-i --interface                  The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default."
             << std::endl;
     std::cout << "-f --file                       File name to save the results to. Optional." << std::endl;
+    std::cout << "-c --compress                   Whether or not to compress the output file as bzip2. Optional."
+              << std::endl;
     std::cout << "-h --help                       Show this message." << std::endl;
 }
 
 void parse_args(int argc, char **argv) {
-    const char *shortopts = "s:d:ut:p:n:I:T:i:f:h";
+    const char *shortopts = "s:d:ut:p:n:I:T:i:f:ch";
     const struct option longopts[] = {
             {"sport",     required_argument, 0, 's'},
             {"dport",     required_argument, 0, 'd'},
@@ -69,8 +72,9 @@ void parse_args(int argc, char **argv) {
             {"timeout",   required_argument, 0, 'T'},
             {"interface", required_argument, 0, 'i'},
             {"file",      required_argument, 0, 'f'},
+            {"compress",  required_argument, 0, 'c'},
             {"help",      no_argument,       0, 'h'},
-            {0, 0,                           0, 0},
+            {0,           0,                 0, 0},
     };
     int c, option_index;
     while ((c = getopt_long(argc, argv, shortopts, longopts, &option_index)) != -1)
@@ -104,6 +108,9 @@ void parse_args(int argc, char **argv) {
                 break;
             case 'f':
                 file = optarg;
+                break;
+            case 'c':
+                compress = true;
                 break;
             case 'h':
                 show_help(argv[0]);
@@ -171,19 +178,25 @@ int main(int argc, char *argv[]) {
         tr->analyze(capture->getRawPackets(), run_idx);
     }
     device->close();
+
+
     // Create json
     std::string out = tr->to_json();
     // Write to file if file has been defined, otherwise write to terminal.
     if (file != nullptr) {
-        std::ofstream file_id;
-        file_id.open(file);
+        if (compress) {
+            std::string compressedFile = file;
+            compressedFile += ".bz2";
+            compressBZ2(out, compressedFile.c_str());
+        } else {
+            std::ofstream file_id;
+            file_id.open(file);
+            file_id << out;
+            file_id.close();
 
-        file_id << out;
-
-        file_id.close();
+        }
     } else {
         std::cout << out << std::endl;
     }
-
     return 0;
 }

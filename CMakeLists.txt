@@ -38,7 +38,16 @@ ExternalProject_Add(
         INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
 )
-
+# Build the libbzip2 library
+ExternalProject_Add(
+        libbzip2
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/bzip2
+        CONFIGURE_COMMAND ""
+        PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/third-party/bzip2
+        BUILD_COMMAND make libbz2.a
+        INSTALL_COMMAND ""
+        BUILD_IN_SOURCE 1
+)
 add_executable(domos-traceroute src/main.cpp ${SOURCES})
 # We need this
 find_package(Threads REQUIRED)
@@ -46,6 +55,7 @@ find_package(Threads REQUIRED)
 #add_dependencies(pcapplusplus libpcap)
 add_dependencies(domos-traceroute pcapplusplus)
 add_dependencies(domos-traceroute jsoncpp)
+add_dependencies(domos-traceroute libbzip2)
 
 add_subdirectory(third-party/random)
 
@@ -55,6 +65,7 @@ target_include_directories(
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/header
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/include
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third-party/bzip2
 )
 
 # Link the built libraries, so that we can use them in our code
@@ -64,6 +75,7 @@ target_link_libraries(
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libPacket++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/pcapplusplus/Dist/libCommon++.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build/lib/libjsoncpp.a
+        ${CMAKE_CURRENT_SOURCE_DIR}/third-party/bzip2/libbz2.a
         effolkronium_random
         Threads::Threads
         pcap

@@ -10,6 +10,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <iostream>
+#include <fstream>
+#include "bzlib.h"
 
 pcpp::PcapLiveDevice *findDefaultDevice() {
     auto devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
@@ -104,4 +106,15 @@ timespec timespec_diff(timespec start, timespec end) {
         temp.tv_nsec = end.tv_nsec - start.tv_nsec;
     }
     return temp;
+}
+
+void compressBZ2(const std::string &data, const char *filename) {
+    FILE *bz2File = fopen(filename, "wb");
+    int bzError;
+    const int BLOCK_MULTIPLIER = 7;
+    BZFILE *myBZ = BZ2_bzWriteOpen(&bzError, bz2File, BLOCK_MULTIPLIER, 0, 0);
+    BZ2_bzWrite(&bzError, myBZ, (void *) data.c_str(), data.length());
+
+
+    BZ2_bzWriteClose(&bzError, myBZ, 0, nullptr, nullptr);
 }

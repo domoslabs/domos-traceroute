@@ -10,3 +10,6 @@
 [submodule "third-party/random"]
 	path = third-party/random
 	url = https://github.com/effolkronium/random.git
+[submodule "third-party/bzip2"]
+	path = third-party/bzip2
+	url = git://sourceware.org/git/bzip2.git

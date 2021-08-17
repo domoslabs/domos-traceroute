@@ -16,7 +16,6 @@ class Traceroute {
 private:
     uint8_t n_paths;
     uint8_t max_ttl;
-    uint32_t n_runs;
     ProbeType probeType;
     std::unordered_map<uint16_t, std::vector<ProbeRegister *>> *flows;
 
