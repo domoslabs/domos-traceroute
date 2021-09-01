@@ -7,7 +7,6 @@
 #include <iostream>
 #include <unistd.h>
 #include <fstream>
-#include <getopt.h>
 #include "effolkronium/random.hpp"
 #include "argparse/argparse.hpp"
 
@@ -30,16 +29,15 @@ pcpp::PcapLiveDevice *device;
 
 
 void parse_args(int argc, char **argv) {
-    argparse::ArgumentParser program("Domos Traceroute");
+    argparse::ArgumentParser program("Domos Traceroute", "1.0.1");
     program.add_argument("target_host")
             .help("The hostname or IP of the target host.");
     program.add_argument("-s", "--sport")
             .help("A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 40000].")
-            .scan<'i', uint16_t>()
-            .default_value(baseSrcPort);
+            .scan<'u', uint16_t>();
     program.add_argument("-d", "--dport")
             .help("The target destination port. For TCP, a good port is 80. For UDP a good port is 33434.")
-            .scan<'i', uint16_t>()
+            .scan<'u', uint16_t>()
             .default_value(dstPort);
     program.add_argument("-u", "--udp")
             .help("Use UDP probes instead.")
@@ -47,11 +45,11 @@ void parse_args(int argc, char **argv) {
             .implicit_value(!udp);
     program.add_argument("-t", "--ttl")
             .help("The time-to-live value to count up to.")
-            .scan<'i', uint16_t>()
+            .scan<'u', uint16_t>()
             .default_value(max_ttl);
     program.add_argument("-p", "--paths")
             .help("Amount of paths to probe.")
-            .scan<'i', uint16_t>()
+            .scan<'u', uint16_t>()
             .default_value(n_paths);
     program.add_argument("-n", "--n_runs")
             .help("Amount of runs to perform.")
@@ -59,18 +57,16 @@ void parse_args(int argc, char **argv) {
             .default_value(n_runs);
     program.add_argument("-I", "--interval")
             .help("Interval between probes (ms).")
-            .scan<'i', uint32_t>()
+            .scan<'u', uint32_t>()
             .default_value(interval_delay);
     program.add_argument("-T", "--timeout")
             .help("How long to wait for probes to return (ms).")
-            .scan<'i', uint32_t>()
+            .scan<'u', uint32_t>()
             .default_value(timeout_delay);
     program.add_argument("-i", "--interface")
-            .help("The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default.")
-            .default_value(interface);
+            .help("The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default.");
     program.add_argument("-f", "--file")
-            .help("File name to save the results to. Optional.")
-            .default_value(file);
+            .help("File name to save the results to. Optional.");
     program.add_argument("-c", "--compress")
             .help(" Whether or not to compress the output file as bzip2. Optional.")
             .default_value(compress)
@@ -85,15 +81,19 @@ void parse_args(int argc, char **argv) {
         exit(0);
     }
     target = program.get("target_host");
-    baseSrcPort = program.get<uint16_t>("--sport");
+    if (program.is_used("--sport"))
+        baseSrcPort = program.get<uint16_t>("--sport");
+
     dstPort = program.get<uint16_t>("--dport");
     n_paths = program.get<uint16_t>("--paths");
     max_ttl = program.get<uint16_t>("--ttl");
     n_runs = program.get<uint32_t>("--n_runs");
     interval_delay = program.get<uint32_t>("--interval");
     timeout_delay = program.get<uint32_t>("--timeout");
-    interface = program.get("--interface");
-    file = program.get("--file");
+    if (program.is_used("--interface"))
+        interface = program.get("--interface");
+    if (program.is_used("--file"))
+        file = program.get("--file");
     compress = program.get<bool>("--compress");
     if (program["--udp"] == true) {
         probeType = ProbeType::UDP;
