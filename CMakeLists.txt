@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.0)
 project(domos_traceroute)
 
 set(CMAKE_CXX_STANDARD 11)
-# Need this for multithreading
 set(CMAKE_CXX_FLAGS)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(
@@ -59,6 +58,7 @@ add_dependencies(domos-traceroute libbzip2)
 
 # EXCLUDE_FROM_ALL makes it so that random is not installed when calling make install...
 add_subdirectory(third-party/random EXCLUDE_FROM_ALL)
+add_subdirectory(third-party/argparse EXCLUDE_FROM_ALL)
 
 # Add the pcapplusplus header
 target_include_directories(
@@ -78,6 +78,7 @@ target_link_libraries(
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/jsoncpp/build/lib/libjsoncpp.a
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/bzip2/libbz2.a
         effolkronium_random
+        argparse
         Threads::Threads
         pcap
 )
