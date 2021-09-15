@@ -24,6 +24,7 @@ uint32_t timeout_delay = 500;
 std::string interface;
 std::string file;
 bool compress = false;
+bool quiet = false;
 bool udp = false;
 pcpp::PcapLiveDevice *device;
 
@@ -71,6 +72,10 @@ void parse_args(int argc, char **argv) {
             .help(" Whether or not to compress the output file as bzip2. Optional.")
             .default_value(compress)
             .implicit_value(!compress);
+    program.add_argument("-q", "--quiet")
+            .help("Run in quiet mode, meaning only the minimum will be printed.")
+            .default_value(quiet)
+            .implicit_value(!quiet);
 
     try {
         program.parse_args(argc, argv);
@@ -95,6 +100,7 @@ void parse_args(int argc, char **argv) {
     if (program.is_used("--file"))
         file = program.get("--file");
     compress = program.get<bool>("--compress");
+    quiet = program.get<bool>("--quiet");
     if (program["--udp"] == true) {
         probeType = ProbeType::UDP;
     }
@@ -107,7 +113,8 @@ void parse_args(int argc, char **argv) {
 
 int main(int argc, char *argv[]) {
     parse_args(argc, argv);
-    std::cout << "Status: Resolving...\r" << std::flush;
+    if (!quiet)
+        std::cout << "Status: Resolving...\r" << std::flush;
     if (interface.empty()) {
         device = findDefaultDevice();
     } else {
@@ -139,9 +146,9 @@ int main(int argc, char *argv[]) {
     auto capture = new Capture(baseSrcPort, dstPort, n_paths, device);
 
     for (int run_idx = 0; run_idx < n_runs; run_idx++) {
-        std::cout << "Status: Capturing on base port " << std::to_string(baseSrcPort) << "... (" << run_idx + 1 << "/"
-                  << n_runs
-                  << ")\r" << std::flush;
+        if (!quiet)
+            std::cout << "Status: Capturing on base port " << std::to_string(baseSrcPort) << "... (" << run_idx + 1
+                      << "/" << n_runs << ")\r" << std::flush;
         capture->startCapture();
         // Send out the probes, and sleep until we are done capturing
         tr->execute(baseSrcPort, targetIp, dstPort, gatewayMac, device, run_idx, interval_delay);
