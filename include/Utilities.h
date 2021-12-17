@@ -24,8 +24,6 @@ pcpp::Packet *parseInnerTcpPacket(uint8_t *tcpData, pcpp::Packet *original);
 
 std::string getHostNameIpAddress(const char *a_domainName);
 
-void compressBZ2(const std::string &data, const char *filename);
-
 timespec timespec_diff(timespec start, timespec end);
 
 template<typename T>
