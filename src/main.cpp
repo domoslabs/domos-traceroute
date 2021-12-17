@@ -42,7 +42,7 @@ Args parse_args(int argc, char **argv) {
     app.add_option("-T, --timeout", args.timeout_delay,"How long to wait for probes to return (ms).");
     app.add_option("-i, --interface", args.interface, "The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default.");
     app.add_option("-f, --file", args.file, "File name to save the results to. Optional.");
-    app.add_option("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the minimum will be printed.");
+    app.add_flag("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the minimum will be printed.");
 
 
     app.parse(argc, argv);
