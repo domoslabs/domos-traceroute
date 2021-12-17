@@ -29,7 +29,7 @@ struct Args{
 };
 
 Args parse_args(int argc, char **argv) {
-    Args args;
+    Args args = {};
     CLI::App app{"Domos Traceroute"};
     app.add_option("address", args.target, "The hostname or IP of the target host.");
     app.add_option("-s, --sport", args.baseSrcPort, "A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 40000].");
@@ -45,7 +45,11 @@ Args parse_args(int argc, char **argv) {
     app.add_flag("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the minimum will be printed.");
 
 
-    app.parse(argc, argv);
+    try{
+        app.parse(argc, argv);
+    }catch(const CLI::ParseError &e) {
+        std::exit((app).exit(e));
+    }
     if(args.udp){
         args.probeType = ProbeType::UDP;
     }
