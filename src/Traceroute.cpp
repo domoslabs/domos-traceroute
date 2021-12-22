@@ -185,10 +185,10 @@ std::string Traceroute::to_json() {
             auto hop = iter.second.at(i);
             auto hop_json = hop->to_json();
             // Detect NAT
-            hop_json["nat"] = false;
+            hop_json["NAT"] = false;
             if(i > 0){
                 if(iter.second.at(i-1)->get_nat_id() != hop->get_nat_id()){
-                    hop_json["nat"] = true;
+                    hop_json["NAT"] = true;
                 }
             }
             hops.append(hop_json);
