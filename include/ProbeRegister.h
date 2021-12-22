@@ -28,6 +28,7 @@ public:
     std::vector<unsigned int> *get_rtt();
 
     uint16_t get_flowhash();
+    uint16_t get_nat_id();
 
     std::shared_ptr<pcpp::Packet> getFirstReceivedPacket();
 
@@ -39,7 +40,7 @@ public:
 
     bool isLast() const;
 
-    uint16_t getTTL();
+    uint16_t getTTL() const;
 };
 
 

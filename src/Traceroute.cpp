@@ -181,8 +181,17 @@ std::string Traceroute::to_json() {
         // Not sure if necessary to sort by ttl since I suspect the json already kinda does it, but why not...
         std::sort(iter.second.begin(), iter.second.end(), sortByTTL);
         Json::Value hops(Json::arrayValue);
-        for (auto hop: iter.second) {
-            hops.append(hop->to_json());
+        for (int i = 0; i < iter.second.size(); i++) {
+            auto hop = iter.second.at(i);
+            auto hop_json = hop->to_json();
+            // Detect NAT
+            hop_json["nat"] = false;
+            if(i > 0){
+                if(iter.second.at(i-1)->get_nat_id() != hop->get_nat_id()){
+                    hop_json["nat"] = true;
+                }
+            }
+            hops.append(hop_json);
             if (hop->isLast())
                 break;
         }

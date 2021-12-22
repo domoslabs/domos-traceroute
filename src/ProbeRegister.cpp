@@ -1,13 +1,13 @@
 //
 // Created by vladim0105 on 07.07.2021.
 //
-
-#include <IPLayer.h>
 #include <IPv4Layer.h>
 #include <TcpLayer.h>
 #include <UdpLayer.h>
 #include <memory>
 #include <utility>
+#include <iostream>
+#include <netinet/in.h>
 #include "ProbeRegister.h"
 
 ProbeRegister::ProbeRegister(uint32_t n_runs, uint16_t ttl) {
@@ -43,7 +43,12 @@ std::vector<unsigned int> *ProbeRegister::get_rtt() {
 
     return rtts;
 }
-
+/**
+ * Compute the flowhash of the probe. Does not reflect actual flowhash calculation used by switches,
+ * use for comparison purpose only. Two probes with the same flowhash will be traversing the same path,
+ * given that they are balanced using per-flow.
+ * @return The flowhash of the probe
+ */
 uint16_t ProbeRegister::get_flowhash() {
     uint16_t flowhash = 0;
     pcpp::IPv4Layer ip = *sent_packets.front()->getLayerOfType<pcpp::IPv4Layer>();
@@ -93,7 +98,6 @@ Json::Value ProbeRegister::to_json() {
 
     // flow hash
     root["flowhash"] = get_flowhash();
-
     // IP layer
     auto sent_ip = sent_packets.front()->getLayerOfType<pcpp::IPv4Layer>();
     root["sent"]["ip"]["src"] = sent_ip->getSrcIPv4Address().toString();
@@ -163,8 +167,40 @@ Json::Value ProbeRegister::to_json() {
     return root;
 }
 
-uint16_t ProbeRegister::getTTL() {
+uint16_t ProbeRegister::getTTL() const {
     return ttl;
+}
+/**
+ * This method returns the NAT identifier for this hop. The NAT identifier is
+ * calculated as the difference between the src+dst port of the inner TCP/UDP layer of
+ * the received packet and the src+dst port of the sent TCP/UDP packet. \n\n
+ * Usually one should use the checksum for this,
+ * but this does not work for TCP
+ * and also some hosts drop the payload within the packets in the ICMP response.
+ */
+uint16_t ProbeRegister::get_nat_id() {
+    auto firstRecv = getFirstReceivedPacket();
+    if(firstRecv == nullptr){
+        return 0;
+    }
+    auto firstSent = sent_packets.front();
+
+    auto tcp_received = firstRecv->getLayerOfType<pcpp::TcpLayer>();
+    auto udp_received = firstRecv->getLayerOfType<pcpp::UdpLayer>();
+    auto tcp_sent = firstSent->getLayerOfType<pcpp::TcpLayer>();
+    auto udp_sent = firstSent->getLayerOfType<pcpp::UdpLayer>();
+
+    uint16_t chk1 = 0;
+    uint16_t chk2 = 0;
+    if (tcp_received) {
+        chk1 = std::stoul(std::to_string(tcp_sent->getSrcPort())+std::to_string(tcp_sent->getDstPort()));
+        chk2 = std::stoul(std::to_string(tcp_received->getSrcPort())+std::to_string(tcp_received->getDstPort()));
+    } else if (udp_received) {
+        chk1 = std::stoul(std::to_string(udp_sent->getSrcPort())+std::to_string(udp_sent->getDstPort()));
+        chk2 = std::stoul(std::to_string(udp_received->getSrcPort())+std::to_string(udp_received->getDstPort()));
+    }
+    return chk2-chk1;
+
 }
 
 

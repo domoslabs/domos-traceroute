@@ -6,7 +6,6 @@
 #include "Capture.h"
 #include <iostream>
 #include <unistd.h>
-#include <fstream>
 #include "third-party/random.hpp"
 #include "third-party/CLI11.hpp"
 
@@ -25,7 +24,7 @@ struct Args{
     std::string file;
     bool quiet = false;
     bool udp = false;
-    pcpp::PcapLiveDevice *device;
+    pcpp::PcapLiveDevice *device = nullptr;
 };
 
 Args parse_args(int argc, char **argv) {
