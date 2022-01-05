@@ -16,7 +16,7 @@ struct Args{
     uint16_t baseSrcPort = Random::get<uint16_t>(33000, 40000);
     uint16_t dstPort = 80;
     uint16_t n_paths = 10;
-    uint16_t max_ttl = 15;
+    uint16_t max_ttl = 20;
     uint32_t n_runs = 3;
     uint32_t interval_delay = 50;
     uint32_t timeout_delay = 500;
@@ -30,6 +30,7 @@ struct Args{
 Args parse_args(int argc, char **argv) {
     Args args = {};
     CLI::App app{"Domos Traceroute"};
+    app.option_defaults()->always_capture_default(true);
     app.add_option("address", args.target, "The hostname or IP of the target host.");
     app.add_option("-s, --sport", args.baseSrcPort, "A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 40000].");
     app.add_option("-d, --dport", args.dstPort, "The target destination port. For TCP, a good port is 80. For UDP a good port is 33434.");

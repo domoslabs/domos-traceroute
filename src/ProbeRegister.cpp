@@ -172,9 +172,9 @@ uint16_t ProbeRegister::getTTL() const {
 }
 /**
  * This method returns the NAT identifier for this hop. The NAT identifier is
- * calculated as the difference between the src+dst port of the inner TCP/UDP layer of
- * the received packet and the src+dst port of the sent TCP/UDP packet. \n\n
- * Usually one should use the checksum for this,
+ * calculated as the difference between the port/ip checksum of the inner TCP/UDP layer of
+ * the received packet and the port/ip checksum of the sent TCP/UDP packet. \n\n
+ * Usually one should use the packet checksum for this,
  * but this does not work for TCP
  * and also some hosts drop the payload within the packets in the ICMP response.
  */
@@ -190,16 +190,18 @@ uint16_t ProbeRegister::get_nat_id() {
     auto tcp_sent = firstSent->getLayerOfType<pcpp::TcpLayer>();
     auto udp_sent = firstSent->getLayerOfType<pcpp::UdpLayer>();
 
-    uint16_t chk1 = 0;
-    uint16_t chk2 = 0;
+    auto ip_sent = firstSent->getLayerOfType<pcpp::IPv4Layer>();
+    auto ip_received = firstRecv->getLayerOfType<pcpp::IPv4Layer>();
+    uint64_t chk_sent = ip_sent->getIPv4Header()->ipSrc + ip_sent->getIPv4Header()->ipDst;
+    uint64_t chk_received = ip_received->getIPv4Header()->ipSrc + ip_received->getIPv4Header()->ipDst;;
     if (tcp_received) {
-        chk1 = std::stoul(std::to_string(tcp_sent->getSrcPort())+std::to_string(tcp_sent->getDstPort()));
-        chk2 = std::stoul(std::to_string(tcp_received->getSrcPort())+std::to_string(tcp_received->getDstPort()));
+        chk_sent -= std::stoul(std::to_string(tcp_sent->getSrcPort()) + std::to_string(tcp_sent->getDstPort()));
+        chk_received -= std::stoul(std::to_string(tcp_received->getSrcPort()) + std::to_string(tcp_received->getDstPort()));
     } else if (udp_received) {
-        chk1 = std::stoul(std::to_string(udp_sent->getSrcPort())+std::to_string(udp_sent->getDstPort()));
-        chk2 = std::stoul(std::to_string(udp_received->getSrcPort())+std::to_string(udp_received->getDstPort()));
+        chk_sent -= std::stoul(std::to_string(udp_sent->getSrcPort()) + std::to_string(udp_sent->getDstPort()));
+        chk_received -= std::stoul(std::to_string(udp_received->getSrcPort()) + std::to_string(udp_received->getDstPort()));
     }
-    return chk2-chk1;
+    return chk_received - chk_sent;
 
 }
 
