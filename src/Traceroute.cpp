@@ -184,16 +184,28 @@ std::string Traceroute::to_json() {
         for (int i = 0; i < iter.second.size(); i++) {
             auto hop = iter.second.at(i);
             auto hop_json = hop->to_json();
-            // Detect NAT
+            // NAT from inside detection
             hop_json["NAT"] = false;
             if(i > 0){
                 if(iter.second.at(i-1)->get_nat_id() != hop->get_nat_id()){
                     hop_json["NAT"] = true;
                 }
             }
+
             hops.append(hop_json);
             if (hop->isLast())
                 break;
+            // NAT from outside detection, can be false positive.
+            if(i < iter.second.size()- 1){
+                if(hop->getFirstReceivedPacket() != nullptr && iter.second.at(i+1)->getFirstReceivedPacket() != nullptr){
+                    auto ipNext = iter.second.at(i+1)->getFirstReceivedPacket()->getLayerOfType<pcpp::IPv4Layer>();
+                    auto ip = hop->getFirstReceivedPacket()->getLayerOfType<pcpp::IPv4Layer>();
+
+                    if(ip->getIPv4Header()->ipSrc == ipNext->getIPv4Header()->ipSrc){
+                        hop_json["NAT"] = true;
+                    }
+                }
+            }
         }
         root["flows"][flow_id] = hops;
     }
