@@ -10,7 +10,7 @@
 #include "third-party/CLI11.hpp"
 
 using Random = effolkronium::random_static;
-struct Args{
+struct Args {
     std::string target;
     ProbeType probeType = ProbeType::TCP;
     uint16_t baseSrcPort = Random::get<uint16_t>(33000, 40000);
@@ -21,7 +21,6 @@ struct Args{
     uint32_t interval_delay = 50;
     uint32_t timeout_delay = 500;
     std::string interface;
-    std::string file;
     bool quiet = false;
     bool udp = false;
     pcpp::PcapLiveDevice *device = nullptr;
@@ -36,21 +35,20 @@ Args parse_args(int argc, char **argv) {
     app.add_option("-d, --dport", args.dstPort, "The target destination port. For TCP, a good port is 80. For UDP a good port is 33434.");
     app.add_flag("-u, --udp", args.udp, "Use UDP probes instead of TCP.");
     app.add_option("-t, --ttl", args.max_ttl, "The time-to-live value to count up to.");
-    app.add_option("-p, --paths", args.n_paths,"Amount of paths to probe.");
-    app.add_option("-n", args.n_runs,"Amount of runs to perform.");
-    app.add_option("-I, --interval", args.interval_delay,"Interval between probes (ms).");
-    app.add_option("-T, --timeout", args.timeout_delay,"How long to wait for probes to return (ms).");
+    app.add_option("-p, --paths", args.n_paths, "Amount of paths to probe.");
+    app.add_option("-n", args.n_runs, "Amount of runs to perform.");
+    app.add_option("-I, --interval", args.interval_delay, "Interval between probes (ms).");
+    app.add_option("-T, --timeout", args.timeout_delay, "How long to wait for probes to return (ms).");
     app.add_option("-i, --interface", args.interface, "The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default.");
-    app.add_option("-f, --file", args.file, "File name to save the results to. Optional.");
-    app.add_flag("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the minimum will be printed.");
+    app.add_flag("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the output will be printed.");
 
 
-    try{
+    try {
         app.parse(argc, argv);
-    }catch(const CLI::ParseError &e) {
+    } catch (const CLI::ParseError &e) {
         std::exit((app).exit(e));
     }
-    if(args.udp){
+    if (args.udp) {
         args.probeType = ProbeType::UDP;
     }
     if (getuid() != 0) {
@@ -113,14 +111,8 @@ int main(int argc, char *argv[]) {
 
     // Create json
     std::string out = tr->to_json();
-    // Write to file if file has been defined, otherwise write to terminal.
-    if (!args.file.empty()) {
-            std::ofstream file_id;
-            file_id.open(args.file);
-            file_id << out;
-            file_id.close();
-    } else {
-        std::cout << out << std::endl;
-    }
+
+    std::cout << out << std::endl;
+    
     return 0;
 }
