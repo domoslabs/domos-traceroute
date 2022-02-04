@@ -11,15 +11,49 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <fstream>
+#include <net/if.h>
 
-pcpp::PcapLiveDevice *findDefaultDevice() {
-    auto devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
-    for (auto device : devList) {
-        if (device->getDefaultGateway().isValid()) {
-            return device;
+
+int getDefaultGatewayAndInterface(in_addr_t *addr, char *interface) {
+    long destination, gateway, flags, refcngt, use, metric, mask;
+    char iface[IF_NAMESIZE];
+    char buf[4096];
+    FILE *file;
+
+    memset(iface, 0, sizeof(iface));
+    memset(buf, 0, sizeof(buf));
+
+    file = fopen("/proc/net/route", "r");
+    if (!file)
+        return -1;
+
+    while (fgets(buf, sizeof(buf), file)) {
+        int a = sscanf(buf, "%s %lx %lx %lx %lx %lx %lx %lx", iface, &destination, &gateway, &flags, &refcngt, &use, &metric, &mask);
+        if (a == 8) {
+            if (destination == mask) { /* default */
+                *addr = gateway;
+                strcpy(interface, iface);
+                fclose(file);
+                return 0;
+            }
         }
     }
-    return nullptr;
+    /* default route not found */
+    if (file)
+        fclose(file);
+    return -1;
+}
+
+pcpp::PcapLiveDevice *findDefaultDevice() {
+    in_addr_t addr = 0;
+    char interface[IF_NAMESIZE];
+    int res = getDefaultGatewayAndInterface(&addr, interface);
+    if (res == -1) {
+        std::cerr << "Unable to determine default gateway!" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    auto device = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(interface);
+    return device;
 }
 
 pcpp::MacAddress getGatewayMac(pcpp::PcapLiveDevice *device) {
@@ -27,6 +61,8 @@ pcpp::MacAddress getGatewayMac(pcpp::PcapLiveDevice *device) {
     return pcpp::NetworkUtils::getInstance().getMacAddress(device->getDefaultGateway(), device, _);
 }
 
+
+// Not used for now due to taking a long time. See getHostNameIpAddress() instead...
 pcpp::IPv4Address resolveHostnameToIP(const char *hostname, pcpp::PcapLiveDevice *device) {
     double _ = 0;
     uint32_t _ttl = 0;

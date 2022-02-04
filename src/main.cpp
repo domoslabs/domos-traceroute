@@ -30,7 +30,7 @@ Args parse_args(int argc, char **argv) {
     Args args = {};
     CLI::App app{"Domos Traceroute"};
     app.option_defaults()->always_capture_default(true);
-    app.add_option("address", args.target, "The hostname or IP of the target host.");
+    app.add_option("address", args.target, "The hostname or IP of the target host.")->required();
     app.add_option("-s, --sport", args.baseSrcPort, "A port which will define source port range used: [sport, sport+n_paths] Default is random in range [33000, 40000].");
     app.add_option("-d, --dport", args.dstPort, "The target destination port. For TCP, a good port is 80. For UDP a good port is 33434.");
     app.add_flag("-u, --udp", args.udp, "Use UDP probes instead of TCP.");
@@ -113,6 +113,6 @@ int main(int argc, char *argv[]) {
     std::string out = tr->to_json();
 
     std::cout << out << std::endl;
-    
+
     return 0;
 }
