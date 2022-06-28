@@ -22,6 +22,7 @@ struct Args {
     uint32_t timeout_delay = 500;
     std::string interface;
     bool quiet = false;
+    bool sequential = false;
     bool udp = false;
     pcpp::PcapLiveDevice *device = nullptr;
 };
@@ -41,6 +42,7 @@ Args parse_args(int argc, char **argv) {
     app.add_option("-T, --timeout", args.timeout_delay, "How long to wait for probes to return (ms).");
     app.add_option("-i, --interface", args.interface, "The interface to use, given by name or IP. Finds and uses a interface with a default gateway by default.");
     app.add_flag("-q, --quiet", args.quiet, "Run in quiet mode, meaning only the output will be printed.");
+    app.add_flag("--sequential", args.sequential, "Output information sequentially, useful for programs that analyze the output live.");
 
 
     try {
@@ -105,6 +107,8 @@ int main(int argc, char *argv[]) {
         args.device->stopCapture();
         // Analyze the captured packets
         tr->analyze(capture->getRawPackets(), run_idx);
+        if (args.sequential && run_idx < args.n_runs - 1)
+            std::cout << tr->to_json() << std::endl;
     }
     args.device->close();
 
