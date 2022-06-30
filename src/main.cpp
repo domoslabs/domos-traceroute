@@ -77,7 +77,6 @@ int main(int argc, char *argv[]) {
             throw std::runtime_error("Could not resolve gateway mac or target ip.");
         }
     }
-
     args.device->open();
     // Populate the flows
     auto flows = new std::unordered_map<uint16_t, std::vector<ProbeRegister *>>();

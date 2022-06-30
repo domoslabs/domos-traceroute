@@ -57,8 +57,7 @@ pcpp::PcapLiveDevice *findDefaultDevice() {
 }
 
 pcpp::MacAddress getGatewayMac(pcpp::PcapLiveDevice *device) {
-    double _ = 0;
-    return pcpp::NetworkUtils::getInstance().getMacAddress(device->getDefaultGateway(), device, _);
+    return device->getMacAddress();
 }
 
 
